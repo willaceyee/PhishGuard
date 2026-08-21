@@ -85,4 +85,3 @@ def predict_url(url, model_path):
         "features": features,
         "model_type": bundle.get("model_type", type(model).__name__),
     }
-
