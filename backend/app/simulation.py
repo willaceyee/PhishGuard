@@ -152,17 +152,4 @@ def simulated_submit(token):
 
     # Deliberately do not inspect or retain any submitted field values.
     record_event(recipient, "form_submitted")
-    return redirect(url_for("simulation.training_page", token=token))
-
-
-@simulation.get("/training/<token>")
-def training_page(token):
-    recipient = recipient_for_token(token)
-    if recipient is None:
-        return render_template("simulation_expired.html"), 404
-    record_event(recipient, "training_viewed")
-    return render_template(
-        "simulation_training.html",
-        user_name=recipient.user.name,
-        campaign_name=recipient.campaign.campaign_name,
-    )
+    return redirect(url_for("training.training_page", token=token))

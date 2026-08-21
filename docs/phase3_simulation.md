@@ -52,7 +52,7 @@ GET /training/<token>
   -> displays an initial phishing-awareness explanation
 ```
 
-The full training and quiz experience will be expanded in Phase 4.
+The redirect now continues into the complete Phase 4 awareness and quiz experience.
 
 ## Review campaign events
 
@@ -68,3 +68,4 @@ Current event types are:
 - `landing_viewed`
 - `form_submitted`
 - `training_viewed`
+- `quiz_completed`

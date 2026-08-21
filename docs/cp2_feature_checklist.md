@@ -25,9 +25,9 @@
 
 ## Phase 4: Training
 
-- [ ] Awareness content page
-- [ ] Quiz module
-- [ ] Store quiz result
+- [x] Awareness content page
+- [x] Quiz module
+- [x] Store quiz result
 
 ## Phase 5: ML Detection
 

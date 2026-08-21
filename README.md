@@ -46,6 +46,8 @@ Create the first administrator once with `POST /api/auth/bootstrap`, then obtain
 
 Phase 3 tracking and simulation endpoints are documented in [the Phase 3 simulation guide](docs/phase3_simulation.md). The simulated landing page records interaction types only and never transmits or stores entered credentials.
 
+Phase 4 awareness content, quiz scoring, completion storage, and reporting are documented in [the Phase 4 training guide](docs/phase4_training.md).
+
 Run the backend tests with:
 
 ```powershell

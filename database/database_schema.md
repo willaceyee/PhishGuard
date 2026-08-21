@@ -60,18 +60,21 @@ Tracking events store interaction types and timestamps only. Simulated form cont
 ## training_results
 
 - `training_id` (primary key)
-- `user_id` (foreign key)
-- `campaign_id` (foreign key)
+- `recipient_id` (unique foreign key)
 - `completed`
 - `completed_at`
+- `created_at` (training start time)
 
 ## quiz_results
 
 - `quiz_id` (primary key)
-- `user_id` (foreign key)
-- `campaign_id` (foreign key)
+- `recipient_id` (unique foreign key)
 - `score`
+- `total_questions`
 - `completed_at`
+- `created_at`
+
+One current training result and quiz result are retained per campaign recipient. A quiz retry updates the existing result.
 
 ## ml_predictions
 

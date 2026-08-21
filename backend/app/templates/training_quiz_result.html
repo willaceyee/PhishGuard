@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Quiz result</title>
+    <style>
+      :root { font-family: Arial, sans-serif; color: #e8f1f2; background: #071416; }
+      body { margin: 0; min-height: 100vh; display: grid; place-items: center; padding: 28px; }
+      main { width: min(760px, 100%); padding: 42px; border: 1px solid #2c5557; border-radius: 18px; background: #0d2426; }
+      .tag { color: #76d7c4; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; }
+      h1 { font-size: clamp(2.2rem, 7vw, 4rem); margin: 12px 0; }
+      .score { color: white; font-size: 1.35rem; }
+      li { margin: 15px 0; color: #bfd0d1; line-height: 1.55; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <p class="tag">Training complete</p>
+      <h1>{{ result.percentage }}%</h1>
+      <p class="score">You answered {{ result.score }} of {{ result.total_questions }} questions correctly.</p>
+      <h2>Key lessons</h2>
+      <ul>
+        {% for question in questions %}<li>{{ question.explanation }}</li>{% endfor %}
+      </ul>
+    </main>
+  </body>
+</html>

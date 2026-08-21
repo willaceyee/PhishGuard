@@ -128,6 +128,18 @@ class CampaignRecipient(TimestampMixin, db.Model):
     events = db.relationship(
         "TrackingEvent", back_populates="recipient", cascade="all, delete-orphan"
     )
+    training_result = db.relationship(
+        "TrainingResult",
+        back_populates="recipient",
+        cascade="all, delete-orphan",
+        uselist=False,
+    )
+    quiz_result = db.relationship(
+        "QuizResult",
+        back_populates="recipient",
+        cascade="all, delete-orphan",
+        uselist=False,
+    )
 
     def to_dict(self, include_token=False):
         data = {
@@ -166,4 +178,66 @@ class TrackingEvent(db.Model):
             "user_id": self.recipient.user_id,
             "event_type": self.event_type,
             "occurred_at": self.occurred_at.isoformat(),
+        }
+
+
+class TrainingResult(TimestampMixin, db.Model):
+    __tablename__ = "training_results"
+
+    training_id = db.Column(db.Integer, primary_key=True)
+    recipient_id = db.Column(
+        db.Integer,
+        db.ForeignKey("campaign_recipients.recipient_id"),
+        unique=True,
+        nullable=False,
+        index=True,
+    )
+    completed = db.Column(db.Boolean, default=False, nullable=False)
+    completed_at = db.Column(db.DateTime(timezone=True))
+
+    recipient = db.relationship("CampaignRecipient", back_populates="training_result")
+
+    def to_dict(self):
+        return {
+            "training_id": self.training_id,
+            "recipient_id": self.recipient_id,
+            "campaign_id": self.recipient.campaign_id,
+            "user_id": self.recipient.user_id,
+            "completed": self.completed,
+            "completed_at": self.completed_at.isoformat() if self.completed_at else None,
+            "started_at": self.created_at.isoformat(),
+        }
+
+
+class QuizResult(TimestampMixin, db.Model):
+    __tablename__ = "quiz_results"
+
+    quiz_id = db.Column(db.Integer, primary_key=True)
+    recipient_id = db.Column(
+        db.Integer,
+        db.ForeignKey("campaign_recipients.recipient_id"),
+        unique=True,
+        nullable=False,
+        index=True,
+    )
+    score = db.Column(db.Integer, nullable=False)
+    total_questions = db.Column(db.Integer, nullable=False)
+    completed_at = db.Column(db.DateTime(timezone=True), default=utc_now, nullable=False)
+
+    recipient = db.relationship("CampaignRecipient", back_populates="quiz_result")
+
+    @property
+    def percentage(self):
+        return round((self.score / self.total_questions) * 100) if self.total_questions else 0
+
+    def to_dict(self):
+        return {
+            "quiz_id": self.quiz_id,
+            "recipient_id": self.recipient_id,
+            "campaign_id": self.recipient.campaign_id,
+            "user_id": self.recipient.user_id,
+            "score": self.score,
+            "total_questions": self.total_questions,
+            "percentage": self.percentage,
+            "completed_at": self.completed_at.isoformat(),
         }
