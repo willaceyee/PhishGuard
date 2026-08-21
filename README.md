@@ -48,6 +48,18 @@ Phase 3 tracking and simulation endpoints are documented in [the Phase 3 simulat
 
 Phase 4 awareness content, quiz scoring, completion storage, and reporting are documented in [the Phase 4 training guide](docs/phase4_training.md).
 
+Phase 5 provides offline URL feature extraction, Random Forest training, a protected prediction API, and SHAP explanations. See [the Phase 5 ML guide](docs/phase5_ml_detection.md).
+
+### Train the development model
+
+```powershell
+cd backend
+.\venv\Scripts\python.exe -m app.ml.prepare_demo_data
+.\venv\Scripts\python.exe -m app.ml.train
+```
+
+The generated `.joblib` model is intentionally ignored by Git and must be trained locally or supplied through `ML_MODEL_PATH`.
+
 Run the backend tests with:
 
 ```powershell

@@ -31,12 +31,12 @@
 
 ## Phase 5: ML Detection
 
-- [ ] Prepare URL dataset
-- [ ] Extract URL features
-- [ ] Train Random Forest model
-- [ ] Save model
-- [ ] Create prediction API
-- [ ] Add SHAP explanation
+- [x] Prepare URL dataset
+- [x] Extract URL features
+- [x] Train Random Forest model
+- [x] Save model
+- [x] Create prediction API
+- [x] Add SHAP explanation
 
 ## Phase 6: Dashboard
 
