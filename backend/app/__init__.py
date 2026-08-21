@@ -16,6 +16,7 @@ def create_app(config_object="config.Config"):
     from app.simulation import simulation
     from app.training import training
     from app.detection import detection
+    from app.analytics import analytics
 
     app.register_blueprint(main)
     app.register_blueprint(auth)
@@ -23,6 +24,7 @@ def create_app(config_object="config.Config"):
     app.register_blueprint(simulation)
     app.register_blueprint(training)
     app.register_blueprint(detection)
+    app.register_blueprint(analytics)
 
     @app.cli.command("init-db")
     def init_db_command():

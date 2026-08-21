@@ -50,6 +50,8 @@ Phase 4 awareness content, quiz scoring, completion storage, and reporting are d
 
 Phase 5 provides offline URL feature extraction, Random Forest training, a protected prediction API, and SHAP explanations. See [the Phase 5 ML guide](docs/phase5_ml_detection.md).
 
+Phase 6 adds a responsive React administrator dashboard with campaign metrics, click and submission rates, training completion, quiz performance, and transparent user risk scores. See [the Phase 6 dashboard guide](docs/phase6_dashboard.md).
+
 ### Train the development model
 
 ```powershell

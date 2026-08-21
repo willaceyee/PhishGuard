@@ -40,11 +40,11 @@
 
 ## Phase 6: Dashboard
 
-- [ ] Show campaign statistics
-- [ ] Show click-through rate
-- [ ] Show quiz score
-- [ ] Show training completion
-- [ ] Show user risk score
+- [x] Show campaign statistics
+- [x] Show click-through rate
+- [x] Show quiz score
+- [x] Show training completion
+- [x] Show user risk score
 
 ## Phase 7: Testing and Report
 
