@@ -13,10 +13,12 @@ def create_app(config_object="config.Config"):
 
     from app.auth import auth
     from app.routes import main, api
+    from app.simulation import simulation
 
     app.register_blueprint(main)
     app.register_blueprint(auth)
     app.register_blueprint(api)
+    app.register_blueprint(simulation)
 
     @app.cli.command("init-db")
     def init_db_command():

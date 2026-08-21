@@ -18,10 +18,10 @@
 
 ## Phase 3: Simulation
 
-- [ ] Generate tracking link
-- [ ] Record click event
-- [ ] Fake landing page
-- [ ] Redirect to training page
+- [x] Generate tracking link
+- [x] Record click event
+- [x] Fake landing page
+- [x] Redirect to training page
 
 ## Phase 4: Training
 

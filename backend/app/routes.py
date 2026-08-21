@@ -4,7 +4,7 @@ from flask import Blueprint, jsonify, request
 from flask_jwt_extended import get_jwt_identity, jwt_required
 
 from app.extensions import db
-from app.models import Campaign, EmailTemplate, User
+from app.models import Campaign, CampaignRecipient, EmailTemplate, User
 
 
 main = Blueprint("main", __name__)
@@ -86,6 +86,12 @@ def update_user(user_id):
 @jwt_required()
 def delete_user(user_id):
     user = db.get_or_404(User, user_id)
+    if db.session.scalar(
+        db.select(CampaignRecipient.recipient_id)
+        .where(CampaignRecipient.user_id == user_id)
+        .limit(1)
+    ):
+        return jsonify(error="User is assigned to a campaign"), 409
     db.session.delete(user)
     db.session.commit()
     return "", 204

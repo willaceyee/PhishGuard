@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Phishing awareness</title>
+    <style>
+      :root { font-family: Arial, sans-serif; color: #e8f1f2; background: #071416; }
+      body { margin: 0; min-height: 100vh; display: grid; place-items: center; padding: 24px; }
+      main { width: min(720px, 100%); padding: 42px; border: 1px solid #2c5557; border-radius: 18px; background: #0d2426; }
+      .tag { color: #76d7c4; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; }
+      h1 { font-size: clamp(2rem, 6vw, 3.6rem); margin: 12px 0; }
+      p, li { color: #bfd0d1; line-height: 1.65; }
+      strong { color: white; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <p class="tag">PhishGuard awareness exercise</p>
+      <h1>This was a simulation.</h1>
+      <p>{{ user_name }}, the page was part of <strong>{{ campaign_name }}</strong>. No credentials were captured or stored.</p>
+      <p>Before signing in from an email link:</p>
+      <ul>
+        <li>Check the sender address and destination URL carefully.</li>
+        <li>Be cautious of urgency, threats, and unexpected account warnings.</li>
+        <li>Open the official service directly instead of using an email link.</li>
+        <li>Report suspicious messages through your organization’s approved channel.</li>
+      </ul>
+    </main>
+  </body>
+</html>
+

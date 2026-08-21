@@ -90,6 +90,9 @@ class Campaign(TimestampMixin, db.Model):
 
     template = db.relationship("EmailTemplate", lazy="joined")
     admin = db.relationship("Admin", lazy="joined")
+    recipients = db.relationship(
+        "CampaignRecipient", back_populates="campaign", cascade="all, delete-orphan"
+    )
 
     def to_dict(self):
         return {
@@ -104,3 +107,63 @@ class Campaign(TimestampMixin, db.Model):
             "created_at": self.created_at.isoformat(),
         }
 
+
+class CampaignRecipient(TimestampMixin, db.Model):
+    __tablename__ = "campaign_recipients"
+    __table_args__ = (
+        db.UniqueConstraint("campaign_id", "user_id", name="uq_campaign_recipient"),
+    )
+
+    recipient_id = db.Column(db.Integer, primary_key=True)
+    campaign_id = db.Column(
+        db.Integer, db.ForeignKey("campaigns.campaign_id"), nullable=False, index=True
+    )
+    user_id = db.Column(
+        db.Integer, db.ForeignKey("users.user_id"), nullable=False, index=True
+    )
+    tracking_token = db.Column(db.String(128), unique=True, nullable=False, index=True)
+
+    campaign = db.relationship("Campaign", back_populates="recipients")
+    user = db.relationship("User", lazy="joined")
+    events = db.relationship(
+        "TrackingEvent", back_populates="recipient", cascade="all, delete-orphan"
+    )
+
+    def to_dict(self, include_token=False):
+        data = {
+            "recipient_id": self.recipient_id,
+            "campaign_id": self.campaign_id,
+            "user": self.user.to_dict(),
+            "created_at": self.created_at.isoformat(),
+        }
+        if include_token:
+            data["tracking_token"] = self.tracking_token
+        return data
+
+
+class TrackingEvent(db.Model):
+    __tablename__ = "tracking_events"
+
+    event_id = db.Column(db.Integer, primary_key=True)
+    recipient_id = db.Column(
+        db.Integer,
+        db.ForeignKey("campaign_recipients.recipient_id"),
+        nullable=False,
+        index=True,
+    )
+    event_type = db.Column(db.String(40), nullable=False, index=True)
+    occurred_at = db.Column(
+        db.DateTime(timezone=True), default=utc_now, nullable=False, index=True
+    )
+
+    recipient = db.relationship("CampaignRecipient", back_populates="events")
+
+    def to_dict(self):
+        return {
+            "event_id": self.event_id,
+            "recipient_id": self.recipient_id,
+            "campaign_id": self.recipient.campaign_id,
+            "user_id": self.recipient.user_id,
+            "event_type": self.event_type,
+            "occurred_at": self.occurred_at.isoformat(),
+        }

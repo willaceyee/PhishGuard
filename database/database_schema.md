@@ -38,14 +38,24 @@ This is the Phase 1 logical draft. Primary and foreign keys will be implemented 
 - `category`
 - `created_at`
 
+## campaign_recipients
+
+- `recipient_id` (primary key)
+- `campaign_id` (foreign key)
+- `user_id` (foreign key)
+- `tracking_token` (unique)
+- `created_at`
+
+The combination of `campaign_id` and `user_id` is unique so a user is assigned to a campaign only once.
+
 ## tracking_events
 
 - `event_id` (primary key)
-- `campaign_id` (foreign key)
-- `user_id` (foreign key)
+- `recipient_id` (foreign key)
 - `event_type`
-- `timestamp`
-- `token` (unique)
+- `occurred_at`
+
+Tracking events store interaction types and timestamps only. Simulated form contents and credentials are never retained.
 
 ## training_results
 
@@ -71,4 +81,3 @@ This is the Phase 1 logical draft. Primary and foreign keys will be implemented 
 - `confidence_score`
 - `shap_explanation`
 - `created_at`
-

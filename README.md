@@ -4,7 +4,7 @@ PhishGuard is a phishing simulation and detection platform for organizational cy
 
 ## Phase 1 status
 
-The project includes a Flask API, a React/Vite frontend, PostgreSQL-ready data models, JWT-protected administration APIs, an initial database design, and a CP2 feature checklist. Advanced machine learning and SHAP work is reserved for a later phase.
+The project includes a Flask API, a React/Vite frontend, PostgreSQL-ready data models, JWT-protected administration APIs, and a controlled phishing-awareness simulation flow. Advanced machine learning and SHAP work is reserved for a later phase.
 
 ## Main modules
 
@@ -43,6 +43,8 @@ python run.py
 The API is available at `http://127.0.0.1:5000/api/health`.
 
 Create the first administrator once with `POST /api/auth/bootstrap`, then obtain a bearer token from `POST /api/auth/login`. See [the Phase 2 API guide](docs/phase2_api.md) for endpoints and examples.
+
+Phase 3 tracking and simulation endpoints are documented in [the Phase 3 simulation guide](docs/phase3_simulation.md). The simulated landing page records interaction types only and never transmits or stores entered credentials.
 
 Run the backend tests with:
 
