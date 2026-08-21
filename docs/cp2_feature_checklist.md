@@ -11,10 +11,10 @@
 
 ## Phase 2: Core Backend
 
-- [ ] Admin login API
-- [ ] User management API
-- [ ] Campaign API
-- [ ] Template API
+- [x] Admin login API
+- [x] User management API
+- [x] Campaign API
+- [x] Template API
 
 ## Phase 3: Simulation
 

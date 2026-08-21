@@ -1,14 +1,27 @@
 from flask import Flask
 from flask_cors import CORS
 
+from app.extensions import db, jwt
 
-def create_app():
+
+def create_app(config_object="config.Config"):
     app = Flask(__name__)
-    app.config.from_object("config.Config")
+    app.config.from_object(config_object)
     CORS(app)
+    db.init_app(app)
+    jwt.init_app(app)
 
-    from app.routes import main
+    from app.auth import auth
+    from app.routes import main, api
 
     app.register_blueprint(main)
-    return app
+    app.register_blueprint(auth)
+    app.register_blueprint(api)
 
+    @app.cli.command("init-db")
+    def init_db_command():
+        """Create database tables for the configured database."""
+        db.create_all()
+        print("Database tables created.")
+
+    return app
