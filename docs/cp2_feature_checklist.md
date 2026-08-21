@@ -3,7 +3,7 @@
 ## Phase 1: Project Setup
 
 - [x] Create project folder structure
-- [ ] Create and publish GitHub repository
+- [x] Create and publish GitHub repository
 - [x] Set up Flask backend
 - [x] Set up React frontend
 - [x] Draft database schema
@@ -53,4 +53,3 @@
 - [ ] Usability testing
 - [ ] Model evaluation
 - [ ] Final report screenshots
-
