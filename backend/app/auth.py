@@ -53,3 +53,24 @@ def current_admin():
         return jsonify(error="Administrator not found"), 404
     return jsonify(admin=admin.to_dict())
 
+
+@auth.post("/change-password")
+@jwt_required()
+def change_password():
+    admin = db.session.get(Admin, int(get_jwt_identity()))
+    if admin is None:
+        return jsonify(error="Administrator not found"), 404
+
+    data = request.get_json(silent=True) or {}
+    current_password = str(data.get("current_password", ""))
+    new_password = str(data.get("new_password", ""))
+    if not admin.check_password(current_password):
+        return jsonify(error="Current password is incorrect"), 401
+    if len(new_password) < 12:
+        return jsonify(error="New password must contain at least 12 characters"), 400
+    if current_password == new_password:
+        return jsonify(error="New password must be different"), 400
+
+    admin.set_password(new_password)
+    db.session.commit()
+    return jsonify(message="Password changed successfully")

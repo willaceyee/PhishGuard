@@ -44,6 +44,19 @@ This endpoint stops accepting registrations after the first administrator exists
 
 The response contains a one-hour JWT access token. `GET /api/auth/me` returns the authenticated administrator.
 
+### Change administrator password
+
+`POST /api/auth/change-password`
+
+This endpoint requires an administrator bearer token.
+
+```json
+{
+  "current_password": "current-password",
+  "new_password": "a-new-password-of-at-least-12-characters"
+}
+```
+
 ## Users
 
 - `GET /api/users`

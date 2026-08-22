@@ -14,6 +14,11 @@ class Config:
         "DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/phishguard"
     )
     SQLALCHEMY_TRACK_MODIFICATIONS = False
+    CORS_ORIGINS = tuple(
+        origin.strip()
+        for origin in os.getenv("CORS_ORIGINS", "http://localhost:5173").split(",")
+        if origin.strip()
+    )
     ML_MODEL_PATH = os.getenv(
         "ML_MODEL_PATH",
         str(PROJECT_ROOT / "ml_model" / "artifacts" / "phishguard_url_model.joblib"),

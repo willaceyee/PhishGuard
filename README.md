@@ -52,6 +52,8 @@ Phase 5 provides offline URL feature extraction, Random Forest training, a prote
 
 Phase 6 adds a responsive React administrator dashboard with campaign metrics, click and submission rates, training completion, quiz performance, and transparent user risk scores. See [the Phase 6 dashboard guide](docs/phase6_dashboard.md).
 
+Phase 7 quality assurance includes automated CI, backend coverage enforcement, security checks, usability-study materials, and a real-world model-evaluation protocol. See [the Phase 7 testing guide](docs/phase7_testing_report.md).
+
 ### Train the development model
 
 ```powershell

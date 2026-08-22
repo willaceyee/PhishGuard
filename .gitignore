@@ -4,6 +4,10 @@ __pycache__/
 venv/
 .venv/
 .env
+backend/instance/
+.coverage
+coverage.xml
+htmlcov/
 
 # Node
 node_modules/
@@ -21,4 +25,3 @@ Thumbs.db
 # ML files
 *.pkl
 *.joblib
-
