@@ -9,23 +9,27 @@ function RateBar({ value }) {
   return <div className="rate-cell"><span>{percent(value)}</span><div className="rate-track" aria-hidden="true"><div className="rate-fill" style={{ width: `${Math.min(value || 0, 100)}%` }} /></div></div>
 }
 
-export default function Dashboard({ admin, data, error, loading, onLogout, onRefresh }) {
+export default function Dashboard({ admin, data, error, loading, onLogout, onRefresh, token }) {
+  const [activePage, setActivePage] = useState('overview')
   const summary = data?.summary
+  const titles = { overview: 'Awareness at a glance', users: 'User management', templates: 'Email templates', campaigns: 'Simulation campaigns', detection: 'URL detection' }
   return (
     <div className="dashboard-shell">
       <aside className="sidebar">
         <div className="sidebar-brand"><span>P</span> PhishGuard</div>
-        <nav aria-label="Main navigation"><a className="nav-item active" href="#overview">Overview</a><a className="nav-item" href="#campaigns">Campaigns</a><a className="nav-item" href="#risk">User risk</a></nav>
+        <nav aria-label="Main navigation">
+          {[['overview', 'Overview'], ['users', 'Users'], ['templates', 'Templates'], ['campaigns', 'Campaigns'], ['detection', 'Detection']].map(([page, label]) => <button key={page} className={`nav-item ${activePage === page ? 'active' : ''}`} onClick={() => setActivePage(page)}>{label}</button>)}
+        </nav>
         <div className="sidebar-note"><span className="live-dot" /> Controlled simulation analytics</div>
       </aside>
       <main className="dashboard-main">
         <header className="topbar">
-          <div><p className="eyebrow">Analytics dashboard</p><h1>Awareness at a glance</h1></div>
+          <div><p className="eyebrow">Administrator workspace</p><h1>{titles[activePage]}</h1></div>
           <div className="admin-actions"><div><strong>{admin?.name || 'Administrator'}</strong><span>{admin?.email}</span></div><button className="ghost-button" onClick={onRefresh} disabled={loading}>Refresh</button><button className="ghost-button" onClick={onLogout}>Sign out</button></div>
         </header>
-        {error && <div className="dashboard-error" role="alert">{error}</div>}
-        {loading && !data && <div className="loading-state">Loading campaign analytics…</div>}
-        {data && <>
+        {activePage === 'overview' && error && <div className="dashboard-error" role="alert">{error}</div>}
+        {activePage === 'overview' && loading && !data && <div className="loading-state">Loading campaign analytics…</div>}
+        {activePage === 'overview' && data && <>
           <section className="metric-grid" id="overview" aria-label="Summary metrics">
             <MetricCard label="Campaigns" value={summary.total_campaigns} detail={`${summary.total_recipients} recipient assignments`} />
             <MetricCard label="Click-through rate" value={percent(summary.click_through_rate)} detail={`${summary.unique_clicked} unique clicks`} tone="amber" />
@@ -42,7 +46,16 @@ export default function Dashboard({ admin, data, error, loading, onLogout, onRef
             <p className="method-note">Risk weights: click {data.risk_method.weights.clicked}, simulated submission {data.risk_method.weights.submitted}, incomplete training {data.risk_method.weights.training_incomplete}, and quiz gap up to {data.risk_method.weights.quiz_gap_maximum} points.</p>
           </section>
         </>}
+        {activePage === 'users' && <Users token={token} onDataChange={onRefresh} />}
+        {activePage === 'templates' && <Templates token={token} />}
+        {activePage === 'campaigns' && <Campaigns token={token} onDataChange={onRefresh} />}
+        {activePage === 'detection' && <Detection token={token} />}
       </main>
     </div>
   )
 }
+import { useState } from 'react'
+import Campaigns from './Campaigns.jsx'
+import Detection from './Detection.jsx'
+import Templates from './Templates.jsx'
+import Users from './Users.jsx'

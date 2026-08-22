@@ -76,6 +76,7 @@ function App() {
       loading={loading}
       onLogout={handleLogout}
       onRefresh={() => loadDashboard()}
+      token={token}
     />
   )
 }

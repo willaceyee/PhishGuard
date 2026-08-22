@@ -54,6 +54,8 @@ Phase 6 adds a responsive React administrator dashboard with campaign metrics, c
 
 Phase 7 quality assurance includes automated CI, backend coverage enforcement, security checks, usability-study materials, and a real-world model-evaluation protocol. See [the Phase 7 testing guide](docs/phase7_testing_report.md).
 
+The React administrator workspace now exposes the simulation and detection features directly: manage users and templates, create campaigns, assign recipients, copy tracking links, and analyze URLs with SHAP explanations. See [the administrator workspace guide](docs/admin_workspace.md).
+
 ### Train the development model
 
 ```powershell
