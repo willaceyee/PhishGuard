@@ -27,6 +27,11 @@ FEATURE_NAMES = (
     "url_entropy",
 )
 
+# Features shared by the live URL extractor and the externally supplied
+# Phishing_Legitimate_full dataset. The remaining extracted features are still
+# returned to clients, but cannot be used to train from that precomputed data.
+MODEL_FEATURE_NAMES = FEATURE_NAMES[:15]
+
 
 SUSPICIOUS_KEYWORDS = (
     "account",
@@ -132,4 +137,4 @@ def extract_url_features(url):
 
 def feature_vector(url):
     features = extract_url_features(url)
-    return [features[name] for name in FEATURE_NAMES]
+    return [features[name] for name in MODEL_FEATURE_NAMES]

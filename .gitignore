@@ -25,3 +25,4 @@ Thumbs.db
 # ML files
 *.pkl
 *.joblib
+ml_model/data/external/

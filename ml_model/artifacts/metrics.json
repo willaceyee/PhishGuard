@@ -1,46 +1,69 @@
 {
-  "dataset_rows": 600,
-  "training_rows": 450,
-  "test_rows": 150,
-  "accuracy": 1.0,
-  "roc_auc": 1.0,
+  "dataset_rows": 10000,
+  "training_rows": 7500,
+  "test_rows": 2500,
+  "accuracy": 0.8924,
+  "roc_auc": 0.958516,
+  "pr_auc": 0.954683,
   "confusion_matrix": [
     [
-      75,
-      0
+      1071,
+      179
     ],
     [
-      0,
-      75
+      90,
+      1160
     ]
   ],
   "classification_report": {
     "0": {
-      "precision": 1.0,
-      "recall": 1.0,
-      "f1-score": 1.0,
-      "support": 75.0
+      "precision": 0.9224806201550387,
+      "recall": 0.8568,
+      "f1-score": 0.8884280381584405,
+      "support": 1250.0
     },
     "1": {
-      "precision": 1.0,
-      "recall": 1.0,
-      "f1-score": 1.0,
-      "support": 75.0
+      "precision": 0.8663181478715459,
+      "recall": 0.928,
+      "f1-score": 0.8960988798764001,
+      "support": 1250.0
     },
-    "accuracy": 1.0,
+    "accuracy": 0.8924,
     "macro avg": {
-      "precision": 1.0,
-      "recall": 1.0,
-      "f1-score": 1.0,
-      "support": 150.0
+      "precision": 0.8943993840132923,
+      "recall": 0.8924000000000001,
+      "f1-score": 0.8922634590174203,
+      "support": 2500.0
     },
     "weighted avg": {
-      "precision": 1.0,
-      "recall": 1.0,
-      "f1-score": 1.0,
-      "support": 150.0
+      "precision": 0.8943993840132923,
+      "recall": 0.8924,
+      "f1-score": 0.8922634590174202,
+      "support": 2500.0
     }
   },
-  "generated_at": "2026-08-21T16:00:11.533793+00:00",
-  "warning": "Synthetic development data; metrics do not represent real-world performance."
+  "generated_at": "2026-08-22T07:21:59.350284+00:00",
+  "dataset_sha256": "204c226d6b6126a40423084ce9d1391a162d0545f451b858464c1b9b742a8900",
+  "feature_names": [
+    "url_length",
+    "hostname_length",
+    "path_length",
+    "query_length",
+    "digit_count",
+    "dot_count",
+    "hyphen_count",
+    "at_count",
+    "percent_count",
+    "subdomain_count",
+    "path_depth",
+    "query_parameter_count",
+    "suspicious_keyword_count",
+    "uses_https",
+    "has_ip_hostname"
+  ],
+  "label_definition": {
+    "0": "legitimate",
+    "1": "phishing"
+  },
+  "warning": "Evaluation uses a random stratified split of precomputed features; it does not measure temporal generalization to newly emerging attacks."
 }
