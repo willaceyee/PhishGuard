@@ -18,6 +18,7 @@ def create_app(config_object="config.Config"):
     from app.training import training
     from app.detection import detection
     from app.analytics import analytics
+    from app.sending_profiles import sending_profiles
 
     app.register_blueprint(main)
     app.register_blueprint(auth)
@@ -26,6 +27,7 @@ def create_app(config_object="config.Config"):
     app.register_blueprint(training)
     app.register_blueprint(detection)
     app.register_blueprint(analytics)
+    app.register_blueprint(sending_profiles)
 
     @app.after_request
     def add_security_headers(response):
