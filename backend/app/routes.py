@@ -1,10 +1,10 @@
 from datetime import datetime
 
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, abort, jsonify, request
 from flask_jwt_extended import get_jwt_identity, jwt_required
 
 from app.extensions import db
-from app.models import Campaign, CampaignRecipient, EmailTemplate, User
+from app.models import Campaign, CampaignRecipient, EmailTemplate, SendingProfile, User
 
 
 main = Blueprint("main", __name__)
@@ -18,6 +18,14 @@ def payload():
 def required_text(data, field):
     value = data.get(field)
     return value.strip() if isinstance(value, str) else ""
+
+
+def resolve_sending_profile(profile_id):
+    if profile_id is None:
+        return None
+    if type(profile_id) is not int:
+        abort(400, description="sending_profile_id must be an integer or null")
+    return db.get_or_404(SendingProfile, profile_id)
 
 
 @main.get("/")
@@ -181,6 +189,7 @@ def create_campaign():
         return jsonify(error="Campaign name and numeric template_id are required"), 400
     if db.session.get(EmailTemplate, template_id) is None:
         return jsonify(error="Email template not found"), 404
+    sending_profile = resolve_sending_profile(data.get("sending_profile_id"))
     scheduled_date = None
     if data.get("scheduled_date"):
         try:
@@ -193,6 +202,7 @@ def create_campaign():
         created_by=int(get_jwt_identity()),
         scheduled_date=scheduled_date,
         status=required_text(data, "status") or "draft",
+        sending_profile=sending_profile,
     )
     db.session.add(campaign)
     db.session.commit()
@@ -204,6 +214,8 @@ def create_campaign():
 def update_campaign(campaign_id):
     campaign = db.get_or_404(Campaign, campaign_id)
     data = payload()
+    if "sending_profile_id" in data:
+        campaign.sending_profile = resolve_sending_profile(data["sending_profile_id"])
     if "campaign_name" in data:
         campaign.campaign_name = required_text(data, "campaign_name")
     if "status" in data:

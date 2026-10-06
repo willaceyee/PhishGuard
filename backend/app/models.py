@@ -148,6 +148,10 @@ class Campaign(TimestampMixin, db.Model):
                 self.scheduled_date.isoformat() if self.scheduled_date else None
             ),
             "status": self.status,
+            "delivery_method": "gmail" if self.sending_profile_id is not None else "mailpit",
+            "sending_profile": (
+                self.sending_profile.to_safe_dict() if self.sending_profile else None
+            ),
             "created_at": self.created_at.isoformat(),
         }
 
