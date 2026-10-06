@@ -247,7 +247,7 @@ def test_campaign_rejects_non_integer_profile_ids(
 
 
 @pytest.mark.parametrize("method", ["post", "patch"])
-@pytest.mark.parametrize("profile_id", [0, -1, 999])
+@pytest.mark.parametrize("profile_id", [0, -1, 999, 9223372036854775808, -9223372036854775809])
 def test_campaign_rejects_unknown_profile_ids(
     client, auth_headers, campaign_payload, gmail_profile, method, profile_id
 ):

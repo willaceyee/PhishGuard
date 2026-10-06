@@ -25,7 +25,10 @@ def resolve_sending_profile(profile_id):
         return None
     if type(profile_id) is not int:
         abort(400, description="sending_profile_id must be an integer or null")
-    return db.get_or_404(SendingProfile, profile_id)
+    profile = db.session.scalar(db.select(SendingProfile))
+    if profile is None or profile.profile_id != profile_id:
+        abort(404, description="Sending profile not found")
+    return profile
 
 
 @main.get("/")
