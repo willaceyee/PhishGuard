@@ -16,7 +16,7 @@ from sklearn.metrics import (
 )
 from sklearn.model_selection import train_test_split
 
-from app.ml.features import MODEL_FEATURE_NAMES, feature_vector
+from app.ml.features import MODEL_FEATURE_NAMES, PRECOMPUTED_FEATURE_NAMES, feature_vector
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
@@ -62,7 +62,7 @@ def load_dataset(dataset_path):
                     values = feature_vector(row["url"])
                 else:
                     values = []
-                    for feature_name in MODEL_FEATURE_NAMES:
+                    for feature_name in PRECOMPUTED_FEATURE_NAMES:
                         value = float(row[PRECOMPUTED_COLUMNS[feature_name]])
                         # Dataset encodes absence of HTTPS, while the live extractor
                         # encodes its presence.
@@ -73,11 +73,12 @@ def load_dataset(dataset_path):
                 raise ValueError(f"Invalid dataset row {line_number}") from error
     if len(rows) < 40 or min(labels.count(0), labels.count(1)) < 20:
         raise ValueError("Dataset needs at least 20 examples from each class")
-    return rows, labels
+    feature_names = MODEL_FEATURE_NAMES if is_raw else PRECOMPUTED_FEATURE_NAMES
+    return rows, labels, feature_names
 
 
 def train_model(dataset_path=DEFAULT_DATASET, model_path=DEFAULT_MODEL, metrics_path=DEFAULT_METRICS):
-    rows, labels = load_dataset(dataset_path)
+    rows, labels, feature_names = load_dataset(dataset_path)
     dataset_path = Path(dataset_path)
     x_train, x_test, y_train, y_test = train_test_split(
         rows, labels, test_size=0.25, random_state=42, stratify=labels
@@ -106,7 +107,7 @@ def train_model(dataset_path=DEFAULT_DATASET, model_path=DEFAULT_MODEL, metrics_
         ),
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "dataset_sha256": hashlib.sha256(dataset_path.read_bytes()).hexdigest(),
-        "feature_names": list(MODEL_FEATURE_NAMES),
+        "feature_names": list(feature_names),
         "label_definition": {"0": "legitimate", "1": "phishing"},
         "warning": (
             "Evaluation uses a random stratified split of precomputed features; "
@@ -117,7 +118,7 @@ def train_model(dataset_path=DEFAULT_DATASET, model_path=DEFAULT_MODEL, metrics_
     }
     bundle = {
         "model": model,
-        "feature_names": list(MODEL_FEATURE_NAMES),
+        "feature_names": list(feature_names),
         "model_type": "RandomForestClassifier",
         "trained_at": metrics["generated_at"],
     }

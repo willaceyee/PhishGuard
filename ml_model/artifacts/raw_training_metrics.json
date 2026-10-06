@@ -1,0 +1,135 @@
+{
+  "training_type": "date-separated balanced raw URLs",
+  "training_rows": 136550,
+  "training_legitimate_rows": 68275,
+  "training_phishing_rows": 68275,
+  "training_legitimate_sources": {
+    "status_1_dataset": 34137,
+    "tranco_https": 34138
+  },
+  "train_end_utc": "2026-08-01T00:00:00+00:00",
+  "diagnostic_start_utc": "2026-08-22T00:00:00+00:00",
+  "threshold": 0.5,
+  "validation": {
+    "rows": 9138,
+    "legitimate_rows": 4569,
+    "phishing_rows": 4569,
+    "accuracy": 0.879186,
+    "roc_auc": 0.955051,
+    "pr_auc": 0.959678,
+    "confusion_matrix": [
+      [
+        4302,
+        267
+      ],
+      [
+        837,
+        3732
+      ]
+    ],
+    "classification_report": {
+      "0": {
+        "precision": 0.8371278458844134,
+        "recall": 0.9415627051871307,
+        "f1-score": 0.8862793572311496,
+        "support": 4569.0
+      },
+      "1": {
+        "precision": 0.9332333083270817,
+        "recall": 0.8168089297439265,
+        "f1-score": 0.8711484593837535,
+        "support": 4569.0
+      },
+      "accuracy": 0.8791858174655286,
+      "macro avg": {
+        "precision": 0.8851805771057475,
+        "recall": 0.8791858174655286,
+        "f1-score": 0.8787139083074516,
+        "support": 9138.0
+      },
+      "weighted avg": {
+        "precision": 0.8851805771057475,
+        "recall": 0.8791858174655286,
+        "f1-score": 0.8787139083074516,
+        "support": 9138.0
+      }
+    }
+  },
+  "diagnostic": {
+    "rows": 2172,
+    "legitimate_rows": 1086,
+    "phishing_rows": 1086,
+    "accuracy": 0.869245,
+    "roc_auc": 0.952746,
+    "pr_auc": 0.957893,
+    "confusion_matrix": [
+      [
+        1028,
+        58
+      ],
+      [
+        226,
+        860
+      ]
+    ],
+    "classification_report": {
+      "0": {
+        "precision": 0.8197767145135566,
+        "recall": 0.9465930018416207,
+        "f1-score": 0.8786324786324786,
+        "support": 1086.0
+      },
+      "1": {
+        "precision": 0.9368191721132898,
+        "recall": 0.7918968692449355,
+        "f1-score": 0.8582834331337326,
+        "support": 1086.0
+      },
+      "accuracy": 0.8692449355432781,
+      "macro avg": {
+        "precision": 0.8782979433134233,
+        "recall": 0.8692449355432781,
+        "f1-score": 0.8684579558831056,
+        "support": 2172.0
+      },
+      "weighted avg": {
+        "precision": 0.8782979433134233,
+        "recall": 0.8692449355432781,
+        "f1-score": 0.8684579558831057,
+        "support": 2172.0
+      }
+    }
+  },
+  "feature_names": [
+    "url_length",
+    "hostname_length",
+    "path_length",
+    "query_length",
+    "digit_count",
+    "dot_count",
+    "hyphen_count",
+    "at_count",
+    "percent_count",
+    "subdomain_count",
+    "path_depth",
+    "query_parameter_count",
+    "suspicious_keyword_count",
+    "has_ip_hostname",
+    "has_explicit_port",
+    "has_punycode",
+    "uses_known_shortener",
+    "url_entropy"
+  ],
+  "rejected_rows": {
+    "phishtank": 12,
+    "legitimate_dataset": 235
+  },
+  "source_sha256": {
+    "phishtank": "a55aa3b2b1314ae3d7715ee6d56527366afe7bc616fe45f0b87fcd4a57b52240",
+    "legitimate_dataset_zip": "3b888fbf950e34cc04716c9f57da139c586bdc4e1f95c2940f6ad471456390ce",
+    "tranco_zip": "6ef97b3268dacf46ff4ac1ac70cfba18fb413c2d5eb39d83a1e1d12405ca24e4"
+  },
+  "random_seed": 42,
+  "generated_at": "2026-08-31T14:53:06.318597+00:00",
+  "warning": "The diagnostic period has informed model assessment and must not be reused as the final untouched test after further tuning."
+}

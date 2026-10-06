@@ -5,7 +5,7 @@ import joblib
 import numpy as np
 import shap
 
-from app.ml.features import MODEL_FEATURE_NAMES, extract_url_features
+from app.ml.features import FEATURE_NAMES, extract_url_features
 
 
 FEATURE_LABELS = {
@@ -39,7 +39,8 @@ def load_bundle(model_path):
     bundle = joblib.load(path)
     if not {"model", "feature_names"}.issubset(bundle):
         raise ValueError("Invalid model bundle")
-    if tuple(bundle["feature_names"]) != MODEL_FEATURE_NAMES:
+    feature_names = tuple(bundle["feature_names"])
+    if not feature_names or not set(feature_names).issubset(FEATURE_NAMES):
         raise ValueError("Model feature schema does not match the application")
     return bundle
 
@@ -58,12 +59,14 @@ def phishing_shap_values(model, row):
 def predict_url(url, model_path):
     bundle = load_bundle(str(model_path))
     features = extract_url_features(url)
-    row = np.asarray([[features[name] for name in MODEL_FEATURE_NAMES]], dtype=float)
+    feature_names = tuple(bundle["feature_names"])
+    row = np.asarray([[features[name] for name in feature_names]], dtype=float)
     model = bundle["model"]
     probability = float(model.predict_proba(row)[0, 1])
+    threshold = float(bundle.get("threshold", 0.5))
     shap_values = phishing_shap_values(model, row)
     ranked = sorted(
-        zip(MODEL_FEATURE_NAMES, shap_values, strict=True),
+        zip(feature_names, shap_values, strict=True),
         key=lambda item: abs(float(item[1])),
         reverse=True,
     )[:5]
@@ -78,10 +81,11 @@ def predict_url(url, model_path):
         for feature_name, impact in ranked
     ]
     return {
-        "prediction": "phishing" if probability >= 0.5 else "legitimate",
+        "prediction": "phishing" if probability >= threshold else "legitimate",
         "phishing_probability": round(probability, 6),
         "confidence": round(max(probability, 1 - probability), 6),
         "top_factors": explanations,
         "features": features,
         "model_type": bundle.get("model_type", type(model).__name__),
+        "threshold": threshold,
     }

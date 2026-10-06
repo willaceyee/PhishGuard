@@ -27,10 +27,14 @@ FEATURE_NAMES = (
     "url_entropy",
 )
 
-# Features shared by the live URL extractor and the externally supplied
-# Phishing_Legitimate_full dataset. The remaining extracted features are still
-# returned to clients, but cannot be used to train from that precomputed data.
-MODEL_FEATURE_NAMES = FEATURE_NAMES[:15]
+# HTTPS prevalence differs sharply between the two supplied data sources, so
+# using it as a learned signal creates a source shortcut rather than phishing
+# detection. It remains extracted and visible to clients, but is excluded from
+# model fitting.
+MODEL_FEATURE_NAMES = tuple(name for name in FEATURE_NAMES if name != "uses_https")
+
+# Compatibility schema for the externally supplied precomputed dataset.
+PRECOMPUTED_FEATURE_NAMES = FEATURE_NAMES[:15]
 
 
 SUSPICIOUS_KEYWORDS = (

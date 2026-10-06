@@ -1,0 +1,79 @@
+{
+  "evaluation_type": "temporally unseen balanced external test",
+  "cutoff_utc": "2026-08-22T07:21:59.350284+00:00",
+  "random_seed": 42,
+  "rows": 2106,
+  "legitimate_rows": 1053,
+  "phishing_rows": 1053,
+  "accuracy": 0.482906,
+  "roc_auc": 0.604929,
+  "pr_auc": 0.535437,
+  "confusion_matrix": [
+    [
+      801,
+      252
+    ],
+    [
+      837,
+      216
+    ]
+  ],
+  "classification_report": {
+    "0": {
+      "precision": 0.489010989010989,
+      "recall": 0.7606837606837606,
+      "f1-score": 0.5953177257525084,
+      "support": 1053.0
+    },
+    "1": {
+      "precision": 0.46153846153846156,
+      "recall": 0.20512820512820512,
+      "f1-score": 0.28402366863905326,
+      "support": 1053.0
+    },
+    "accuracy": 0.4829059829059829,
+    "macro avg": {
+      "precision": 0.47527472527472525,
+      "recall": 0.48290598290598286,
+      "f1-score": 0.43967069719578084,
+      "support": 2106.0
+    },
+    "weighted avg": {
+      "precision": 0.4752747252747253,
+      "recall": 0.4829059829059829,
+      "f1-score": 0.43967069719578084,
+      "support": 2106.0
+    }
+  },
+  "rejected_rows": {
+    "phishtank": 0,
+    "legitimate_dataset": 235
+  },
+  "source_sha256": {
+    "phishtank": "a55aa3b2b1314ae3d7715ee6d56527366afe7bc616fe45f0b87fcd4a57b52240",
+    "legitimate_dataset_zip": "3b888fbf950e34cc04716c9f57da139c586bdc4e1f95c2940f6ad471456390ce"
+  },
+  "label_definition": {
+    "0": "legitimate",
+    "1": "phishing"
+  },
+  "feature_names": [
+    "url_length",
+    "hostname_length",
+    "path_length",
+    "query_length",
+    "digit_count",
+    "dot_count",
+    "hyphen_count",
+    "at_count",
+    "percent_count",
+    "subdomain_count",
+    "path_depth",
+    "query_parameter_count",
+    "suspicious_keyword_count",
+    "uses_https",
+    "has_ip_hostname"
+  ],
+  "generated_at": "2026-08-31T06:02:06.840353+00:00",
+  "warning": "The legitimate source's status labels are externally supplied and its collection date is unavailable; results measure cross-source performance, not production safety."
+}

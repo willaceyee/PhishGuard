@@ -26,10 +26,12 @@ export function getDashboardOverview(token) {
 
 export const listUsers = (token) => request('/api/users', { token })
 export const createUser = (token, user) => request('/api/users', { token, method: 'POST', body: JSON.stringify(user) })
+export const setUserEmailApproval = (token, userId, approved) => request(`/api/users/${userId}`, { token, method: 'PATCH', body: JSON.stringify({ simulation_email_approved: approved }) })
 export const deleteUser = (token, userId) => request(`/api/users/${userId}`, { token, method: 'DELETE' })
 
 export const listTemplates = (token) => request('/api/templates', { token })
 export const createTemplate = (token, template) => request('/api/templates', { token, method: 'POST', body: JSON.stringify(template) })
+export const updateTemplate = (token, templateId, template) => request(`/api/templates/${templateId}`, { token, method: 'PATCH', body: JSON.stringify(template) })
 export const deleteTemplate = (token, templateId) => request(`/api/templates/${templateId}`, { token, method: 'DELETE' })
 
 export const listCampaigns = (token) => request('/api/campaigns', { token })
@@ -37,5 +39,7 @@ export const createCampaign = (token, campaign) => request('/api/campaigns', { t
 export const deleteCampaign = (token, campaignId) => request(`/api/campaigns/${campaignId}`, { token, method: 'DELETE' })
 export const assignRecipients = (token, campaignId, userIds) => request(`/api/campaigns/${campaignId}/recipients`, { token, method: 'POST', body: JSON.stringify({ user_ids: userIds }) })
 export const listRecipients = (token, campaignId) => request(`/api/campaigns/${campaignId}/recipients`, { token })
+export const getDeliveryPreview = (token, campaignId) => request(`/api/campaigns/${campaignId}/delivery-preview`, { token })
+export const sendCampaignEmails = (token, campaignId, confirmation) => request(`/api/campaigns/${campaignId}/send`, { token, method: 'POST', body: JSON.stringify({ confirmation }) })
 
 export const predictUrl = (token, url) => request('/api/detection/predict', { token, method: 'POST', body: JSON.stringify({ url }) })

@@ -23,9 +23,20 @@ class Config:
         "ML_MODEL_PATH",
         str(PROJECT_ROOT / "ml_model" / "artifacts" / "phishguard_url_model.joblib"),
     )
+    PUBLIC_BASE_URL = os.getenv("PUBLIC_BASE_URL", "http://localhost:5000").rstrip("/")
+    MAIL_DELIVERY_ENABLED = os.getenv("MAIL_DELIVERY_ENABLED", "0") == "1"
+    MAIL_HOST = os.getenv("MAIL_HOST", "127.0.0.1")
+    MAIL_PORT = int(os.getenv("MAIL_PORT", "1025"))
+    MAIL_FROM = os.getenv("MAIL_FROM", "simulation@phishguard.test")
+    MAX_CAMPAIGN_RECIPIENTS = int(os.getenv("MAX_CAMPAIGN_RECIPIENTS", "25"))
+    MAX_EMAILS_PER_HOUR = int(os.getenv("MAX_EMAILS_PER_HOUR", "50"))
 
 
 class TestConfig(Config):
     TESTING = True
     SQLALCHEMY_DATABASE_URI = "sqlite:///:memory:"
     JWT_SECRET_KEY = "test-secret-key-longer-than-thirty-two-bytes"
+    PUBLIC_BASE_URL = "http://localhost"
+    MAIL_DELIVERY_ENABLED = True
+    MAX_CAMPAIGN_RECIPIENTS = 5
+    MAX_EMAILS_PER_HOUR = 10

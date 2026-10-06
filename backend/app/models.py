@@ -44,6 +44,7 @@ class User(TimestampMixin, db.Model):
     email = db.Column(db.String(255), unique=True, nullable=False, index=True)
     department = db.Column(db.String(120))
     role = db.Column(db.String(80), default="employee", nullable=False)
+    simulation_email_approved = db.Column(db.Boolean, default=False, nullable=False)
 
     def to_dict(self):
         return {
@@ -52,6 +53,7 @@ class User(TimestampMixin, db.Model):
             "email": self.email,
             "department": self.department,
             "role": self.role,
+            "simulation_email_approved": self.simulation_email_approved,
             "created_at": self.created_at.isoformat(),
         }
 

@@ -1,5 +1,6 @@
 from flask import Flask
 from flask_cors import CORS
+from sqlalchemy import inspect, text
 
 from app.extensions import db, jwt
 
@@ -46,5 +47,21 @@ def create_app(config_object="config.Config"):
         """Create database tables for the configured database."""
         db.create_all()
         print("Database tables created.")
+
+    @app.cli.command("upgrade-db")
+    def upgrade_db_command():
+        """Apply the small built-in schema upgrades used by this project."""
+        columns = {column["name"] for column in inspect(db.engine).get_columns("users")}
+        if "simulation_email_approved" not in columns:
+            db.session.execute(
+                text(
+                    "ALTER TABLE users ADD COLUMN "
+                    "simulation_email_approved BOOLEAN NOT NULL DEFAULT FALSE"
+                )
+            )
+            db.session.commit()
+            print("Added users.simulation_email_approved.")
+        else:
+            print("Database is already up to date.")
 
     return app

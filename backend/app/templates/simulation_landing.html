@@ -20,16 +20,11 @@
   <body>
     <main>
       <h1>Verify your account</h1>
-      <p>Your session has expired. Sign in to continue.</p>
+      <p>This controlled page measures whether a participant would continue after following an unexpected link.</p>
       <form method="post" action="{{ url_for('simulation.simulated_submit', token=token) }}">
-        <label for="identity">Email address</label>
-        <input id="identity" type="email" autocomplete="off" required>
-        <label for="secret">Password</label>
-        <input id="secret" type="password" autocomplete="off" required>
-        <button type="submit">Continue</button>
+        <button type="submit">I would continue</button>
       </form>
-      <p class="notice">Authorized PhishGuard awareness simulation. Entered values are not transmitted or stored.</p>
+      <p class="notice">Authorized PhishGuard awareness simulation. This page never asks for or accepts credentials.</p>
     </main>
   </body>
 </html>
-

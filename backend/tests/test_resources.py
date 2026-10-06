@@ -9,7 +9,9 @@ def test_user_crud(client, auth_headers):
         },
     )
     assert created.status_code == 201
-    user_id = created.get_json()["user"]["user_id"]
+    created_user = created.get_json()["user"]
+    user_id = created_user["user_id"]
+    assert created_user["simulation_email_approved"] is False
 
     duplicate = client.post(
         "/api/users",
@@ -25,6 +27,19 @@ def test_user_crud(client, auth_headers):
     )
     assert updated.status_code == 200
     assert updated.get_json()["user"]["department"] == "Operations"
+    approved = client.patch(
+        f"/api/users/{user_id}",
+        headers=auth_headers,
+        json={"simulation_email_approved": True},
+    )
+    assert approved.status_code == 200
+    assert approved.get_json()["user"]["simulation_email_approved"] is True
+    invalid_approval = client.patch(
+        f"/api/users/{user_id}",
+        headers=auth_headers,
+        json={"simulation_email_approved": "yes"},
+    )
+    assert invalid_approval.status_code == 400
     assert len(client.get("/api/users", headers=auth_headers).get_json()["users"]) == 1
     assert client.delete(f"/api/users/{user_id}", headers=auth_headers).status_code == 204
 
@@ -42,6 +57,28 @@ def test_template_and_campaign_crud(client, auth_headers):
     )
     assert template_response.status_code == 201
     template_id = template_response.get_json()["template"]["template_id"]
+
+    updated_template = client.patch(
+        f"/api/templates/{template_id}",
+        headers=auth_headers,
+        json={
+            "template_name": "Document review",
+            "subject": "Review the shared document",
+            "body": "Open the controlled simulation link.",
+            "category": "document",
+        },
+    )
+    assert updated_template.status_code == 200
+    updated_template_body = updated_template.get_json()["template"]
+    assert updated_template_body["template_name"] == "Document review"
+    assert updated_template_body["category"] == "document"
+
+    invalid_template = client.patch(
+        f"/api/templates/{template_id}",
+        headers=auth_headers,
+        json={"subject": "   "},
+    )
+    assert invalid_template.status_code == 400
 
     campaign_response = client.post(
         "/api/campaigns",
@@ -68,4 +105,3 @@ def test_template_and_campaign_crud(client, auth_headers):
     assert updated.get_json()["campaign"]["status"] == "scheduled"
     assert client.delete(f"/api/campaigns/{campaign_id}", headers=auth_headers).status_code == 204
     assert client.delete(f"/api/templates/{template_id}", headers=auth_headers).status_code == 204
-

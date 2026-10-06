@@ -1,9 +1,10 @@
 import secrets
 
-from flask import Blueprint, jsonify, redirect, render_template, request, url_for
+from flask import Blueprint, current_app, jsonify, redirect, render_template, request, url_for
 from flask_jwt_extended import jwt_required
 
 from app.extensions import db
+from app.email_delivery import delivery_preview, send_campaign, tracking_url
 from app.models import Campaign, CampaignRecipient, TrackingEvent, User
 
 
@@ -57,6 +58,14 @@ def add_campaign_recipients(campaign_id):
             )
         ).all()
     )
+    current_count = db.session.scalar(
+        db.select(db.func.count(CampaignRecipient.recipient_id)).where(
+            CampaignRecipient.campaign_id == campaign_id
+        )
+    ) or 0
+    new_count = len([user_id for user_id in unique_ids if user_id not in existing_ids])
+    if current_count + new_count > current_app.config["MAX_CAMPAIGN_RECIPIENTS"]:
+        return jsonify(error="Campaign recipient safety limit would be exceeded"), 400
     created = []
     for user_id in unique_ids:
         if user_id in existing_ids:
@@ -75,11 +84,7 @@ def add_campaign_recipients(campaign_id):
             recipients=[
                 {
                     **recipient.to_dict(),
-                    "tracking_url": url_for(
-                        "simulation.track_link",
-                        token=recipient.tracking_token,
-                        _external=True,
-                    ),
+                    "tracking_url": tracking_url(recipient),
                 }
                 for recipient in created
             ],
@@ -102,15 +107,37 @@ def list_campaign_recipients(campaign_id):
         recipients=[
             {
                 **recipient.to_dict(),
-                "tracking_url": url_for(
-                    "simulation.track_link",
-                    token=recipient.tracking_token,
-                    _external=True,
-                ),
+                "tracking_url": tracking_url(recipient),
             }
             for recipient in recipients
         ]
     )
+
+
+@simulation.get("/api/campaigns/<int:campaign_id>/delivery-preview")
+@jwt_required()
+def preview_campaign_delivery(campaign_id):
+    campaign = db.get_or_404(Campaign, campaign_id)
+    return jsonify(preview=delivery_preview(campaign))
+
+
+@simulation.post("/api/campaigns/<int:campaign_id>/send")
+@jwt_required()
+def send_campaign_email(campaign_id):
+    campaign = db.get_or_404(Campaign, campaign_id)
+    preview = delivery_preview(campaign)
+    data = request.get_json(silent=True) or {}
+    if data.get("confirmation") != preview["confirmation_phrase"]:
+        return jsonify(error="Type the exact confirmation phrase before sending"), 400
+    try:
+        delivered = send_campaign(campaign)
+    except PermissionError as error:
+        return jsonify(error=str(error)), 403
+    except ValueError as error:
+        return jsonify(error=str(error)), 400
+    except ConnectionError as error:
+        return jsonify(error=str(error)), 502
+    return jsonify(message="Authorized simulation emails delivered", delivered=delivered)
 
 
 @simulation.get("/api/campaigns/<int:campaign_id>/events")

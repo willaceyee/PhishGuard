@@ -76,6 +76,11 @@ def update_user(user_id):
         if duplicate:
             return jsonify(error="A user with this email already exists"), 409
         user.email = email
+    if "simulation_email_approved" in data:
+        approved = data["simulation_email_approved"]
+        if not isinstance(approved, bool):
+            return jsonify(error="simulation_email_approved must be true or false"), 400
+        user.simulation_email_approved = approved
     if not user.name or not user.role:
         return jsonify(error="Name and role cannot be empty"), 400
     db.session.commit()
@@ -131,11 +136,15 @@ def create_template():
 def update_template(template_id):
     template = db.get_or_404(EmailTemplate, template_id)
     data = payload()
+    updates = {}
     for field in ("template_name", "subject", "body", "category"):
         if field in data:
-            setattr(template, field, required_text(data, field) or None)
-    if not template.template_name or not template.subject or not template.body:
-        return jsonify(error="Template name, subject, and body cannot be empty"), 400
+            value = required_text(data, field)
+            if field in {"template_name", "subject", "body"} and not value:
+                return jsonify(error="Template name, subject, and body cannot be empty"), 400
+            updates[field] = value or None
+    for field, value in updates.items():
+        setattr(template, field, value)
     db.session.commit()
     return jsonify(template=template.to_dict())
 
