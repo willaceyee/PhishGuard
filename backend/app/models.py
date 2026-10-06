@@ -78,6 +78,44 @@ class EmailTemplate(TimestampMixin, db.Model):
         }
 
 
+class SendingProfile(TimestampMixin, db.Model):
+    __tablename__ = "sending_profiles"
+    __table_args__ = (
+        db.UniqueConstraint("provider", name="uq_sending_profile_provider"),
+        db.CheckConstraint("provider = 'gmail'", name="ck_sending_profile_gmail"),
+    )
+
+    profile_id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(160), nullable=False)
+    provider = db.Column(db.String(40), default="gmail", nullable=False)
+    from_name = db.Column(db.String(120), nullable=False)
+    from_email = db.Column(db.String(255), nullable=False)
+    encrypted_app_password = db.Column(db.Text)
+    enabled = db.Column(db.Boolean, default=False, nullable=False)
+    last_tested_at = db.Column(db.DateTime(timezone=True))
+    last_test_succeeded = db.Column(db.Boolean, default=False, nullable=False)
+    updated_at = db.Column(
+        db.DateTime(timezone=True), default=utc_now, onupdate=utc_now, nullable=False
+    )
+
+    def to_safe_dict(self) -> dict:
+        return {
+            "profile_id": self.profile_id,
+            "name": self.name,
+            "provider": self.provider,
+            "from_name": self.from_name,
+            "from_email": self.from_email,
+            "credential_configured": bool(self.encrypted_app_password),
+            "enabled": self.enabled,
+            "last_tested_at": (
+                self.last_tested_at.isoformat() if self.last_tested_at else None
+            ),
+            "last_test_succeeded": self.last_test_succeeded,
+            "created_at": self.created_at.isoformat(),
+            "updated_at": self.updated_at.isoformat(),
+        }
+
+
 class Campaign(TimestampMixin, db.Model):
     __tablename__ = "campaigns"
 
@@ -89,9 +127,13 @@ class Campaign(TimestampMixin, db.Model):
     created_by = db.Column(db.Integer, db.ForeignKey("admins.admin_id"), nullable=False)
     scheduled_date = db.Column(db.DateTime(timezone=True))
     status = db.Column(db.String(40), default="draft", nullable=False)
+    sending_profile_id = db.Column(
+        db.Integer, db.ForeignKey("sending_profiles.profile_id")
+    )
 
     template = db.relationship("EmailTemplate", lazy="joined")
     admin = db.relationship("Admin", lazy="joined")
+    sending_profile = db.relationship("SendingProfile")
     recipients = db.relationship(
         "CampaignRecipient", back_populates="campaign", cascade="all, delete-orphan"
     )
@@ -166,6 +208,7 @@ class TrackingEvent(db.Model):
         index=True,
     )
     event_type = db.Column(db.String(40), nullable=False, index=True)
+    delivery_channel = db.Column(db.String(40))
     occurred_at = db.Column(
         db.DateTime(timezone=True), default=utc_now, nullable=False, index=True
     )
@@ -179,6 +222,7 @@ class TrackingEvent(db.Model):
             "campaign_id": self.recipient.campaign_id,
             "user_id": self.recipient.user_id,
             "event_type": self.event_type,
+            "delivery_channel": self.delivery_channel,
             "occurred_at": self.occurred_at.isoformat(),
         }
 

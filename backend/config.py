@@ -2,6 +2,8 @@ import os
 from datetime import timedelta
 from pathlib import Path
 
+from cryptography.fernet import Fernet
+
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
@@ -30,6 +32,9 @@ class Config:
     MAIL_FROM = os.getenv("MAIL_FROM", "simulation@phishguard.test")
     MAX_CAMPAIGN_RECIPIENTS = int(os.getenv("MAX_CAMPAIGN_RECIPIENTS", "25"))
     MAX_EMAILS_PER_HOUR = int(os.getenv("MAX_EMAILS_PER_HOUR", "50"))
+    SENDING_PROFILE_ENCRYPTION_KEY = os.getenv("SENDING_PROFILE_ENCRYPTION_KEY", "")
+    GMAIL_MAX_CAMPAIGN_RECIPIENTS = 10
+    GMAIL_MAX_EMAILS_PER_HOUR = 20
 
 
 class TestConfig(Config):
@@ -40,3 +45,4 @@ class TestConfig(Config):
     MAIL_DELIVERY_ENABLED = True
     MAX_CAMPAIGN_RECIPIENTS = 5
     MAX_EMAILS_PER_HOUR = 10
+    SENDING_PROFILE_ENCRYPTION_KEY = Fernet.generate_key().decode()

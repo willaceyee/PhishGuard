@@ -51,6 +51,9 @@ def create_app(config_object="config.Config"):
     @app.cli.command("upgrade-db")
     def upgrade_db_command():
         """Apply the small built-in schema upgrades used by this project."""
+        from app.models import SendingProfile
+
+        upgraded = False
         columns = {column["name"] for column in inspect(db.engine).get_columns("users")}
         if "simulation_email_approved" not in columns:
             db.session.execute(
@@ -61,7 +64,30 @@ def create_app(config_object="config.Config"):
             )
             db.session.commit()
             print("Added users.simulation_email_approved.")
-        else:
+            upgraded = True
+
+        profile_table_exists = inspect(db.engine).has_table("sending_profiles")
+        SendingProfile.__table__.create(bind=db.engine, checkfirst=True)
+        if not profile_table_exists:
+            print("Created sending_profiles.")
+            upgraded = True
+
+        for table, column, definition in (
+            ("campaigns", "sending_profile_id", "INTEGER"),
+            ("tracking_events", "delivery_channel", "VARCHAR(40)"),
+        ):
+            columns = {
+                item["name"] for item in inspect(db.engine).get_columns(table)
+            }
+            if column not in columns:
+                db.session.execute(
+                    text(f"ALTER TABLE {table} ADD COLUMN {column} {definition}")
+                )
+                db.session.commit()
+                print(f"Added {table}.{column}.")
+                upgraded = True
+
+        if not upgraded:
             print("Database is already up to date.")
 
     return app
