@@ -7,13 +7,19 @@ from email.utils import formataddr
 from cryptography.fernet import Fernet, InvalidToken
 from flask import Blueprint, current_app, jsonify, request
 from flask_jwt_extended import jwt_required
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
 from app.extensions import db
 from app.models import SendingProfile, User, utc_now
 
 
 sending_profiles = Blueprint("sending_profiles", __name__, url_prefix="/api/sending-profile")
+
+
+@sending_profiles.errorhandler(SQLAlchemyError)
+def handle_persistence_error(_error):
+    db.session.rollback()
+    return jsonify(error="sending_profile_persistence_failed"), 503
 
 
 def cipher():
@@ -47,6 +53,10 @@ def profile_updates(data, creating=False):
         if not isinstance(value, str) or not value.strip():
             raise ValueError("invalid_profile")
         value = value.strip()
+        if (field == "name" and len(value) > 160) or (
+            field == "from_name" and len(value) > 120
+        ):
+            raise ValueError("invalid_profile")
         if field == "from_email":
             value = value.lower()
             local = value.removesuffix("@gmail.com")

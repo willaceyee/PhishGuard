@@ -5,7 +5,7 @@ from email.utils import getaddresses
 import pytest
 from unittest.mock import patch
 from sqlalchemy import inspect, text
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import DataError, IntegrityError, OperationalError
 
 from app.extensions import db
 from app.models import (
@@ -398,6 +398,109 @@ def test_credential_update_without_encryption_key_is_safe(
     if method == "patch":
         db.session.expire_all()
         assert stored_profile.name == "Personal Gmail"
+
+
+@pytest.mark.parametrize("field,limit", [("name", 160), ("from_name", 120)])
+@pytest.mark.parametrize("method", ["post", "patch"])
+def test_metadata_length_limits_reject_before_credentials_change(
+    client, auth_headers, profile_payload, stored_profile, field, limit, method, caplog
+):
+    ciphertext = stored_profile.encrypted_app_password
+    if method == "post":
+        db.session.delete(stored_profile)
+        db.session.commit()
+    data = {**profile_payload, field: "x" * (limit + 1)}
+    response = getattr(client, method)("/api/sending-profile", json=data, headers=auth_headers)
+    assert response.status_code == 400
+    assert response.get_json() == {"error": "invalid_profile"}
+    assert "abcdefghijklmnop" not in response.get_data(as_text=True)
+    assert ciphertext not in response.get_data(as_text=True)
+    assert "abcdefghijklmnop" not in caplog.text
+    assert ciphertext not in caplog.text
+    if method == "post":
+        assert db.session.query(SendingProfile).count() == 0
+    else:
+        db.session.expire_all()
+        assert stored_profile.name == "Personal Gmail"
+        assert stored_profile.from_name == "Simulation Admin"
+        assert stored_profile.encrypted_app_password == ciphertext
+
+
+@pytest.mark.parametrize("field,limit", [("name", 160), ("from_name", 120)])
+@pytest.mark.parametrize("method", ["post", "patch"])
+def test_metadata_limits_apply_after_trimming(
+    client, auth_headers, profile_payload, stored_profile, field, limit, method
+):
+    if method == "post":
+        db.session.delete(stored_profile)
+        db.session.commit()
+    data = {**profile_payload, field: " " + "x" * limit + " "}
+    response = getattr(client, method)("/api/sending-profile", json=data, headers=auth_headers)
+    assert response.status_code == (201 if method == "post" else 200)
+    assert response.get_json()["profile"][field] == "x" * limit
+
+
+@pytest.mark.parametrize("error_class", [DataError, OperationalError])
+@pytest.mark.parametrize(
+    "method,path",
+    [("post", "/api/sending-profile"), ("patch", "/api/sending-profile"),
+     ("delete", "/api/sending-profile"), ("post", "/api/sending-profile/test")],
+)
+def test_persistence_errors_do_not_expose_credential_bind_parameters(
+    app, client, auth_headers, profile_payload, stored_profile, approved_sender,
+    error_class, method, path, caplog,
+):
+    app.config["PROPAGATE_EXCEPTIONS"] = False
+    previous_ciphertext = stored_profile.encrypted_app_password
+    if method == "post" and path == "/api/sending-profile":
+        db.session.delete(stored_profile)
+        db.session.commit()
+    bound_ciphertexts = []
+
+    def fail_commit():
+        changed = list(db.session.new) + list(db.session.dirty) + list(db.session.deleted)
+        profile = next(item for item in changed if isinstance(item, SendingProfile))
+        bound_ciphertexts.append(profile.encrypted_app_password)
+        raise error_class(
+            "credential persistence statement",
+            {"encrypted_app_password": profile.encrypted_app_password},
+            Exception("plaintext-marker-abcdefghijklmnop"),
+        )
+
+    with patch.object(db.session, "commit", side_effect=fail_commit), patch("smtplib.SMTP"):
+        response = getattr(client, method)(path, json=profile_payload, headers=auth_headers)
+    for marker in bound_ciphertexts + [previous_ciphertext, "plaintext-marker-abcdefghijklmnop"]:
+        assert marker not in response.get_data(as_text=True)
+        assert marker not in caplog.text
+    assert response.status_code == 503
+    assert response.get_json() == {"error": "sending_profile_persistence_failed"}
+    if method == "post" and path == "/api/sending-profile":
+        assert db.session.query(SendingProfile).count() == 0
+    else:
+        db.session.expire_all()
+        assert stored_profile.name == "Personal Gmail"
+        assert stored_profile.encrypted_app_password == previous_ciphertext
+        assert stored_profile.last_tested_at is None
+        assert stored_profile.last_test_succeeded is False
+
+
+def test_unapproved_test_persistence_failure_is_safe(
+    app, client, auth_headers, stored_profile, caplog
+):
+    app.config["PROPAGATE_EXCEPTIONS"] = False
+    ciphertext = stored_profile.encrypted_app_password
+    failure = DataError("statement", {"encrypted_app_password": ciphertext}, Exception("plaintext-marker"))
+    with patch.object(db.session, "commit", side_effect=failure), patch("smtplib.SMTP") as smtp:
+        response = client.post("/api/sending-profile/test", headers=auth_headers)
+    assert ciphertext not in response.get_data(as_text=True)
+    assert ciphertext not in caplog.text
+    assert "plaintext-marker" not in response.get_data(as_text=True)
+    assert "plaintext-marker" not in caplog.text
+    assert response.status_code == 503
+    assert response.get_json() == {"error": "sending_profile_persistence_failed"}
+    smtp.assert_not_called()
+    db.session.expire_all()
+    assert stored_profile.last_tested_at is None
 
 
 def test_profile_stores_ciphertext_and_serializes_without_secrets(app):
