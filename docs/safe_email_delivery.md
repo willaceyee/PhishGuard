@@ -94,6 +94,9 @@ Mailpit is a development inbox. Do not configure its relay feature or expose por
    Place the output in `SENDING_PROFILE_ENCRYPTION_KEY` in the backend environment
    or a local, untracked `.env`. Keep the key secret and preserve a secure backup;
    it encrypts the saved Gmail app password and is not stored in the database.
+   Use the Flask CLI startup command in step 3 to load `.env` before constructing
+   the app; `python run.py` requires these variables to be exported in PowerShell
+   first.
 2. Apply the one-time schema upgrade to the configured database:
 
    ```powershell
@@ -104,7 +107,12 @@ Mailpit is a development inbox. Do not configure its relay feature or expose por
 3. Deploy the tracking application at a public HTTPS URL, set `PUBLIC_BASE_URL` to
    that URL and `MAIL_DELIVERY_ENABLED=1`, and restart Flask once with the key and
    these settings. The backend checks URL structure and host category without
-   probing reachability. Confirm that recipients can reach the deployment.
+   probing reachability. Confirm that recipients can reach the deployment. For
+   local startup from `backend`, use:
+
+   ```powershell
+   .\venv\Scripts\python.exe -m flask --app run.py run
+   ```
 4. On **Users**, create a user whose email exactly matches the sending Gmail
    address and select **Approve email** for that authorized sender.
 5. Obtain a Google app password for the personal Gmail account. On **Sending
@@ -118,7 +126,9 @@ Mailpit is a development inbox. Do not configure its relay feature or expose por
 
 The stored app password is never displayed or returned by the API. **Save
 metadata** preserves it; enter a new app password and select **Replace password**
-only to replace it. Run **Send test** again after changing the sender or password.
+only to replace it. Changing the Gmail address or replacing the password clears
+the previous test result and blocks Gmail campaigns until **Send test** succeeds
+again. Profile-name and display-name edits preserve the test result.
 Mailpit remains the default for both existing and new campaigns.
 
 ## Send an authorized Gmail campaign
@@ -145,10 +155,9 @@ manually retrying the remaining recipients. No automatic retry occurs.
 
 - Revoke a recipient's approval on **Users** to block future delivery to them.
 - Select **Disable** on **Sending Profiles** to block Gmail campaigns immediately.
-  Deleting a profile also prevents delivery through that profile; campaigns whose
-  profile is missing are blocked rather than falling back to Mailpit. If deletion
-  is rejected because campaigns reference the profile, use **Disable** to stop it
-  without deleting campaign history.
+  Deletion is rejected while any campaign references the profile, including
+  completed campaigns. Use **Disable** to stop delivery without deleting campaign
+  history; an unreferenced profile can be deleted.
 - Rotating `SENDING_PROFILE_ENCRYPTION_KEY` without re-encrypting the saved app
   password makes that credential unusable. Preserve the key across restarts and
   deployments; the application has no automatic key-rotation workflow.

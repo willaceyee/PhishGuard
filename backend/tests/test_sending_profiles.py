@@ -194,6 +194,61 @@ def test_password_patch_replaces_ciphertext(client, auth_headers, stored_profile
     assert_safe_response(response, stored_profile)
 
 
+@pytest.fixture()
+def tested_profile_campaign(auth_headers, stored_profile):
+    stored_profile.enabled = True
+    stored_profile.last_tested_at = utc_now()
+    stored_profile.last_test_succeeded = True
+    campaign = Campaign(
+        campaign_name="Gmail simulation",
+        admin=db.session.scalar(db.select(Admin)),
+        template=EmailTemplate(template_name="Notice", subject="Notice", body="Notice"),
+        sending_profile=stored_profile,
+    )
+    db.session.add(campaign)
+    db.session.commit()
+    return campaign
+
+
+@pytest.mark.parametrize(
+    "updates", [{"from_email": "new@gmail.com"}, {"app_password": "qrst uvwx yzab cdef"}],
+)
+def test_sender_or_password_change_invalidates_test_and_delivery_preview(
+    client, auth_headers, stored_profile, tested_profile_campaign, updates,
+):
+    preview_path = f"/api/campaigns/{tested_profile_campaign.campaign_id}/delivery-preview"
+    assert client.get(preview_path, headers=auth_headers).get_json()["preview"]["profile_ready"] is True
+
+    response = client.patch("/api/sending-profile", json=updates, headers=auth_headers)
+
+    assert response.status_code == 200
+    assert response.get_json()["profile"]["last_test_succeeded"] is False
+    assert response.get_json()["profile"]["last_tested_at"] is None
+    db.session.expire_all()
+    assert stored_profile.last_test_succeeded is False
+    assert stored_profile.last_tested_at is None
+    assert client.get(preview_path, headers=auth_headers).get_json()["preview"]["profile_ready"] is False
+
+
+@pytest.mark.parametrize(
+    "updates", [{"name": "Renamed", "from_name": "New display name"},
+                {"from_email": " Owner@GMAIL.COM "}],
+)
+def test_cosmetic_edits_preserve_successful_test_and_delivery_readiness(
+    client, auth_headers, stored_profile, tested_profile_campaign, updates,
+):
+    tested_at = stored_profile.last_tested_at.isoformat()
+    response = client.patch("/api/sending-profile", json=updates, headers=auth_headers)
+    assert response.status_code == 200
+    assert response.get_json()["profile"]["last_test_succeeded"] is True
+    assert response.get_json()["profile"]["last_tested_at"] == tested_at
+    preview = client.get(
+        f"/api/campaigns/{tested_profile_campaign.campaign_id}/delivery-preview",
+        headers=auth_headers,
+    ).get_json()["preview"]
+    assert preview["profile_ready"] is True
+
+
 @pytest.mark.parametrize("enabled", [True, False])
 def test_profile_can_be_enabled_or_disabled(client, auth_headers, stored_profile, enabled):
     stored_profile.enabled = not enabled
@@ -228,6 +283,51 @@ def test_delete_profile(client, auth_headers, stored_profile):
     assert response.status_code == 204
     assert response.data == b""
     assert db.session.query(SendingProfile).count() == 0
+
+
+@pytest.mark.parametrize("migrated", [False, True])
+@pytest.mark.parametrize("foreign_keys", [False, True])
+def test_referenced_profile_cannot_be_deleted_or_recreated_to_rebind_campaign(
+    app, client, auth_headers, stored_profile, profile_payload, migrated, foreign_keys,
+):
+    if migrated:
+        db.session.execute(text("DROP TABLE campaigns"))
+        db.session.execute(text(
+            "CREATE TABLE campaigns (campaign_id INTEGER PRIMARY KEY, "
+            "campaign_name VARCHAR(160) NOT NULL, template_id INTEGER NOT NULL, "
+            "created_by INTEGER NOT NULL, scheduled_date DATETIME, "
+            "status VARCHAR(40) NOT NULL, created_at DATETIME NOT NULL)"
+        ))
+        db.session.commit()
+        result = app.test_cli_runner().invoke(args=["upgrade-db"])
+        assert result.exit_code == 0, result.output
+        assert inspect(db.engine).get_foreign_keys("campaigns") == []
+    db.session.execute(text(f"PRAGMA foreign_keys = {int(foreign_keys)}"))
+    assert db.session.execute(text("PRAGMA foreign_keys")).scalar_one() == int(foreign_keys)
+    campaign = Campaign(
+        campaign_name="Historical Gmail simulation", status="completed",
+        admin=db.session.scalar(db.select(Admin)),
+        template=EmailTemplate(template_name="Notice", subject="Notice", body="Notice"),
+        sending_profile=stored_profile,
+    )
+    db.session.add(campaign)
+    db.session.commit()
+    campaign_id, profile_id = campaign.campaign_id, stored_profile.profile_id
+
+    response = client.delete("/api/sending-profile", headers=auth_headers)
+
+    assert response.status_code == 409
+    assert response.get_json() == {"error": "sending_profile_in_use"}
+    response = client.post(
+        "/api/sending-profile", json={**profile_payload, "from_email": "replacement@gmail.com"},
+        headers=auth_headers,
+    )
+    assert response.status_code == 409
+    db.session.expire_all()
+    campaign = db.session.get(Campaign, campaign_id)
+    assert campaign.sending_profile_id == profile_id
+    assert campaign.sending_profile.from_email == "owner@gmail.com"
+    assert db.session.query(SendingProfile).count() == 1
 
 
 @pytest.mark.parametrize("method,path", [("patch", "/api/sending-profile"), ("post", "/api/sending-profile/test")])
@@ -290,6 +390,8 @@ def test_gmail_connection_uses_tls_and_sends_only_to_approved_sender(
     assert message.get_all("Cc") is None
     assert message.get_all("Bcc") is None
     assert "security simulation" in message["Subject"].lower()
+    assert message["Subject"].startswith("[SECURITY SIMULATION]")
+    assert message["X-PhishGuard-Simulation"] == "authorized-training"
     assert "test" in message["Subject"].lower()
     assert "security simulation" in message.get_content().lower()
     assert "abcdefghijklmnop" not in message.as_string()

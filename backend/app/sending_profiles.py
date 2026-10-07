@@ -10,7 +10,7 @@ from flask_jwt_extended import jwt_required
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
 from app.extensions import db
-from app.models import SendingProfile, User, utc_now
+from app.models import Campaign, SendingProfile, User, utc_now
 
 
 sending_profiles = Blueprint("sending_profiles", __name__, url_prefix="/api/sending-profile")
@@ -113,11 +113,17 @@ def update_profile():
         updates = profile_updates(request.get_json(silent=True))
     except ValueError as error:
         return jsonify(error=str(error)), 400
+    credentials_changed = "app_password" in updates or (
+        "from_email" in updates and updates["from_email"] != profile.from_email
+    )
     if "app_password" in updates:
         try:
             updates["encrypted_app_password"] = encrypt_app_password(updates.pop("app_password"))
         except (RuntimeError, ValueError):
             return jsonify(error="gmail_credentials_unavailable"), 503
+    if credentials_changed:
+        profile.last_test_succeeded = False
+        profile.last_tested_at = None
     for field, value in updates.items():
         setattr(profile, field, value)
     db.session.commit()
@@ -129,6 +135,12 @@ def update_profile():
 def delete_profile():
     profile = db.session.scalar(db.select(SendingProfile))
     if profile is not None:
+        if db.session.scalar(
+            db.select(Campaign.campaign_id)
+            .where(Campaign.sending_profile_id == profile.profile_id)
+            .limit(1)
+        ) is not None:
+            return jsonify(error="sending_profile_in_use"), 409
         db.session.delete(profile)
         try:
             db.session.commit()
@@ -143,9 +155,10 @@ def test_gmail_profile(profile: SendingProfile) -> None:
         raise RuntimeError("Gmail credentials are unavailable")
     password = decrypt_app_password(profile.encrypted_app_password)
     message = EmailMessage()
-    message["Subject"] = "PhishGuard security simulation connection test"
+    message["Subject"] = "[SECURITY SIMULATION] PhishGuard connection test"
     message["From"] = formataddr((profile.from_name, profile.from_email))
     message["To"] = profile.from_email
+    message["X-PhishGuard-Simulation"] = "authorized-training"
     message.set_content(
         "This is a PhishGuard security simulation connection test sent to your own "
         "approved Gmail address. No action is required."

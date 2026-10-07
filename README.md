@@ -38,10 +38,13 @@ pip install -r requirements.txt
 Copy-Item .env.example .env
 flask --app run.py init-db
 flask --app run.py upgrade-db
-python run.py
+flask --app run.py run
 ```
 
-The API is available at `http://127.0.0.1:5000/api/health`.
+The Flask CLI loads the local `.env` before constructing the app. Use this startup
+command after editing `.env`; `python run.py` requires environment variables to
+be exported in PowerShell first. The API is available at
+`http://127.0.0.1:5000/api/health`.
 
 Create the first administrator once with `POST /api/auth/bootstrap`, then obtain a bearer token from `POST /api/auth/login`. See [the Phase 2 API guide](docs/phase2_api.md) for endpoints and examples.
 
@@ -70,9 +73,10 @@ For Gmail setup, generate a Fernet key locally from `backend`:
 ```
 
 Keep the output secret and set it as `SENDING_PROFILE_ENCRYPTION_KEY` in the
-backend environment. For an existing database, back it up and run
-`flask --app run.py upgrade-db` once, then restart Flask with the configured key,
-`MAIL_DELIVERY_ENABLED=1`, and a publicly reachable HTTPS `PUBLIC_BASE_URL`.
+backend environment or local, untracked `.env`. For an existing database, back it
+up and run `flask --app run.py upgrade-db` once, then restart Flask with the configured key,
+`MAIL_DELIVERY_ENABLED=1`, and a publicly reachable HTTPS `PUBLIC_BASE_URL` using
+`flask --app run.py run` so `.env` settings are loaded before app construction.
 On **Users**, create and approve a user matching the Gmail sender. On **Sending
 Profiles**, create the profile using a Google app password, select **Send test**
 (which sends real email to that approved sender only), and **Enable** it. Never
