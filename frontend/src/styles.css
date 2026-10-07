@@ -103,6 +103,11 @@ td strong { color: #1b383c; }
 .approval-status.approved { color: #176b59; background: #daf2eb; }
 .approval-status.not-approved { color: #8a5a16; background: #fff0cf; }
 .success-note { margin-bottom: 1rem; padding: .8rem 1rem; border-radius: 8px; color: #176850; background: #ddf5eb; }
+.sending-profile-page .page-heading h2 { margin: 0; color: #18363a; font-size: 2.1rem; letter-spacing: -.04em; }
+.sending-profile-form { max-width: 650px; }
+.credential-indicator { margin: 1.25rem 0 .5rem; padding: .7rem .85rem; border-radius: 8px; color: #246a5e; background: #e1f2ed; font-size: .85rem; font-weight: 750; }
+.sending-profile-actions { display: flex; flex-wrap: wrap; align-items: center; gap: .65rem; margin-top: 1.4rem; }
+.sending-profile-actions button:disabled { cursor: wait; opacity: .65; }
 .assignment-panel { margin-top: 1.25rem; }
 .assignment-grid { display: grid; grid-template-columns: minmax(220px, .7fr) minmax(0, 1.3fr); gap: 1.5rem; }
 .assignment-grid h3 { color: #29474b; }

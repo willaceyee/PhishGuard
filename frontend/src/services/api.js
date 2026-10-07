@@ -43,3 +43,9 @@ export const getDeliveryPreview = (token, campaignId) => request(`/api/campaigns
 export const sendCampaignEmails = (token, campaignId, confirmation) => request(`/api/campaigns/${campaignId}/send`, { token, method: 'POST', body: JSON.stringify({ confirmation }) })
 
 export const predictUrl = (token, url) => request('/api/detection/predict', { token, method: 'POST', body: JSON.stringify({ url }) })
+
+export const getSendingProfile = (token) => request('/api/sending-profile', { token })
+export const createSendingProfile = (token, profile) => request('/api/sending-profile', { token, method: 'POST', body: JSON.stringify(profile) })
+export const updateSendingProfile = (token, profile) => request('/api/sending-profile', { token, method: 'PATCH', body: JSON.stringify(profile) })
+export const testSendingProfile = (token) => request('/api/sending-profile/test', { token, method: 'POST' })
+export const deleteSendingProfile = (token) => request('/api/sending-profile', { token, method: 'DELETE' })

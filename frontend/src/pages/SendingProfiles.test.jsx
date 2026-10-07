@@ -1,0 +1,241 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
+import SendingProfiles from './SendingProfiles.jsx'
+import Dashboard from './Dashboard.jsx'
+import { createSendingProfile, deleteSendingProfile, getSendingProfile, testSendingProfile, updateSendingProfile } from '../services/api.js'
+
+vi.mock('../services/api.js', () => ({
+  getSendingProfile: vi.fn(),
+  createSendingProfile: vi.fn(),
+  updateSendingProfile: vi.fn(),
+  testSendingProfile: vi.fn(),
+  deleteSendingProfile: vi.fn(),
+}))
+
+const profile = {
+  profile_id: 1, name: 'Awareness Gmail', provider: 'gmail', from_name: 'Security team',
+  from_email: 'security@gmail.com', credential_configured: true, enabled: false,
+  last_tested_at: null, last_test_succeeded: false,
+  created_at: '2026-10-06T00:00:00+00:00', updated_at: '2026-10-06T00:00:00+00:00',
+}
+const password = 'abcd efgh ijkl mnop'
+
+beforeEach(() => {
+  vi.resetAllMocks()
+  getSendingProfile.mockResolvedValue({ profile })
+})
+
+afterEach(() => {
+  cleanup()
+  vi.restoreAllMocks()
+  vi.unstubAllGlobals()
+})
+
+async function openProfile() {
+  render(<SendingProfiles token="admin-token" />)
+  await screen.findByDisplayValue('Awareness Gmail')
+}
+
+function enterMetadata() {
+  fireEvent.change(screen.getByLabelText('Profile name'), { target: { value: 'Awareness Gmail' } })
+  fireEvent.change(screen.getByLabelText('Display name'), { target: { value: 'Security team' } })
+  fireEvent.change(screen.getByLabelText('Gmail address'), { target: { value: 'security@gmail.com' } })
+}
+
+describe('Sending Profiles workspace', () => {
+  it('waits for loading before allowing an absent profile to be created', async () => {
+    let resolve
+    getSendingProfile.mockImplementation(() => new Promise((done) => { resolve = done }))
+    render(<SendingProfiles token="admin-token" />)
+    expect(screen.getByText('Loading sending profile…')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Create profile' })).not.toBeInTheDocument()
+    await act(async () => resolve({ profile: null }))
+    expect(screen.getByText('No Gmail profile configured.')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Create profile' })).toBeEnabled()
+    expect(getSendingProfile).toHaveBeenCalledWith('admin-token')
+  })
+
+  it('creates the profile and clears the submitted password immediately on success', async () => {
+    getSendingProfile.mockResolvedValue({ profile: null })
+    createSendingProfile.mockResolvedValue({ profile })
+    render(<SendingProfiles token="admin-token" />)
+    await screen.findByRole('button', { name: 'Create profile' })
+    enterMetadata()
+    const input = screen.getByLabelText('Google app password')
+    expect(input).toHaveAttribute('type', 'password')
+    expect(input).toHaveAttribute('autocomplete', 'new-password')
+    fireEvent.change(input, { target: { value: password } })
+    fireEvent.click(screen.getByRole('button', { name: 'Create profile' }))
+    await screen.findByText('Profile created.')
+    expect(createSendingProfile).toHaveBeenCalledWith('admin-token', {
+      name: 'Awareness Gmail', from_name: 'Security team', from_email: 'security@gmail.com', app_password: password,
+    })
+    expect(screen.getByLabelText('Google app password')).toHaveValue('')
+    expect(document.body.innerHTML).not.toContain(password)
+    expect(screen.getByText('App password: Configured')).toBeInTheDocument()
+  })
+
+  it('shows only credential configuration and never populates the password from API data', async () => {
+    getSendingProfile.mockResolvedValue({ profile: { ...profile, app_password: 'stored-plaintext', encrypted_app_password: 'stored-ciphertext' } })
+    await openProfile()
+    expect(screen.getByText('App password: Configured')).toBeInTheDocument()
+    expect(screen.getByLabelText('Google app password')).toHaveValue('')
+    expect(document.body.innerHTML).not.toContain('stored-plaintext')
+    expect(document.body.innerHTML).not.toContain('stored-ciphertext')
+  })
+
+  it('shows an unconfigured credential without a stored password', async () => {
+    getSendingProfile.mockResolvedValue({ profile: { ...profile, credential_configured: false } })
+    await openProfile()
+    expect(screen.getByText('App password: Not configured')).toBeInTheDocument()
+    expect(screen.getByLabelText('Google app password')).toHaveValue('')
+  })
+
+  it('saves metadata without including a typed replacement password', async () => {
+    updateSendingProfile.mockResolvedValue({ profile: { ...profile, name: 'Updated name' } })
+    await openProfile()
+    fireEvent.change(screen.getByLabelText('Profile name'), { target: { value: 'Updated name' } })
+    fireEvent.change(screen.getByLabelText('Google app password'), { target: { value: password } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save metadata' }))
+    await screen.findByText('Metadata saved.')
+    expect(updateSendingProfile).toHaveBeenCalledWith('admin-token', {
+      name: 'Updated name', from_name: 'Security team', from_email: 'security@gmail.com',
+    })
+  })
+
+  it('replaces only the password and clears it after success', async () => {
+    updateSendingProfile.mockResolvedValue({ profile })
+    await openProfile()
+    expect(screen.getByRole('button', { name: 'Replace password' })).toBeDisabled()
+    fireEvent.change(screen.getByLabelText('Profile name'), { target: { value: 'Unsaved name' } })
+    fireEvent.change(screen.getByLabelText('Google app password'), { target: { value: password } })
+    fireEvent.click(screen.getByRole('button', { name: 'Replace password' }))
+    await screen.findByText('App password replaced.')
+    expect(updateSendingProfile).toHaveBeenCalledWith('admin-token', { app_password: password })
+    expect(screen.getByLabelText('Google app password')).toHaveValue('')
+    expect(document.body.innerHTML).not.toContain(password)
+    expect(screen.getByLabelText('Profile name')).toHaveValue('Unsaved name')
+  })
+
+  it('sends a test email and displays success', async () => {
+    testSendingProfile.mockResolvedValue({ profile: { ...profile, last_test_succeeded: true, last_tested_at: '2026-10-07T00:00:00+00:00' } })
+    await openProfile()
+    fireEvent.click(screen.getByRole('button', { name: 'Send test' }))
+    expect(await screen.findByRole('status')).toHaveTextContent('Test email sent to security@gmail.com.')
+    expect(testSendingProfile).toHaveBeenCalledWith('admin-token')
+  })
+
+  it('displays a safe provider failure in the dashboard error style', async () => {
+    testSendingProfile.mockRejectedValue(new Error('gmail_authentication_failed'))
+    await openProfile()
+    fireEvent.click(screen.getByRole('button', { name: 'Send test' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('Gmail authentication failed. Check the Google app password.')
+    expect(screen.getByRole('alert')).toHaveClass('dashboard-error')
+  })
+
+  it('does not render unexpected error objects or credential-bearing messages', async () => {
+    testSendingProfile.mockRejectedValue({ message: `SMTP raw credentials ${password}`, response: { secret: 'stored-ciphertext' } })
+    await openProfile()
+    fireEvent.click(screen.getByRole('button', { name: 'Send test' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('Unable to complete the sending profile request. Please try again.')
+    expect(document.body.innerHTML).not.toContain(password)
+    expect(document.body.innerHTML).not.toContain('stored-ciphertext')
+  })
+
+  it('enables and disables the single profile', async () => {
+    updateSendingProfile.mockResolvedValueOnce({ profile: { ...profile, enabled: true } }).mockResolvedValueOnce({ profile })
+    await openProfile()
+    expect(screen.getByText('Disabled')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Enable' }))
+    await screen.findByText('Enabled')
+    expect(updateSendingProfile).toHaveBeenNthCalledWith(1, 'admin-token', { enabled: true })
+    fireEvent.click(screen.getByRole('button', { name: 'Disable' }))
+    await screen.findByText('Disabled')
+    expect(updateSendingProfile).toHaveBeenNthCalledWith(2, 'admin-token', { enabled: false })
+  })
+
+  it('requires delete confirmation and returns to the empty form after deleting', async () => {
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValueOnce(false).mockReturnValueOnce(true)
+    deleteSendingProfile.mockResolvedValue(null)
+    await openProfile()
+    fireEvent.click(screen.getByRole('button', { name: 'Delete' }))
+    expect(deleteSendingProfile).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: 'Delete' }))
+    await screen.findByText('No Gmail profile configured.')
+    expect(confirm).toHaveBeenCalledWith('Delete Awareness Gmail?')
+    expect(deleteSendingProfile).toHaveBeenCalledWith('admin-token')
+    expect(screen.getByLabelText('Profile name')).toHaveValue('')
+    expect(screen.getByLabelText('Google app password')).toHaveValue('')
+  })
+
+  it.each([
+    ['Save metadata', 'Saving…', updateSendingProfile],
+    ['Replace password', 'Replacing…', updateSendingProfile],
+    ['Send test', 'Sending test…', testSendingProfile],
+    ['Enable', 'Enabling…', updateSendingProfile],
+    ['Delete', 'Deleting…', deleteSendingProfile],
+  ])('blocks duplicate and overlapping requests during %s', async (button, pending, api) => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+    let resolve
+    api.mockImplementation(() => new Promise((done) => { resolve = done }))
+    await openProfile()
+    fireEvent.change(screen.getByLabelText('Google app password'), { target: { value: password } })
+    fireEvent.click(screen.getByRole('button', { name: button }))
+    const pendingButton = screen.getByRole('button', { name: pending })
+    expect(pendingButton).toBeDisabled()
+    screen.getAllByRole('button').forEach((action) => expect(action).toBeDisabled())
+    fireEvent.click(pendingButton)
+    expect(api).toHaveBeenCalledTimes(1)
+    await act(async () => resolve(button === 'Delete' ? null : { profile }))
+  })
+
+  it('blocks duplicate creation while the request is pending', async () => {
+    getSendingProfile.mockResolvedValue({ profile: null })
+    let resolve
+    createSendingProfile.mockImplementation(() => new Promise((done) => { resolve = done }))
+    render(<SendingProfiles token="admin-token" />)
+    await screen.findByRole('button', { name: 'Create profile' })
+    enterMetadata()
+    fireEvent.change(screen.getByLabelText('Google app password'), { target: { value: password } })
+    fireEvent.click(screen.getByRole('button', { name: 'Create profile' }))
+    expect(screen.getByRole('button', { name: 'Creating…' })).toBeDisabled()
+    fireEvent.click(screen.getByRole('button', { name: 'Creating…' }))
+    expect(createSendingProfile).toHaveBeenCalledTimes(1)
+    await act(async () => resolve({ profile }))
+  })
+
+  it('displays loading errors without offering to create a possibly existing profile', async () => {
+    getSendingProfile.mockRejectedValue(new Error('network failed'))
+    render(<SendingProfiles token="admin-token" />)
+    await screen.findByRole('alert')
+    expect(screen.queryByRole('button', { name: 'Create profile' })).not.toBeInTheDocument()
+  })
+
+  it('opens Sending Profiles from dashboard navigation', async () => {
+    render(<Dashboard token="admin-token" />)
+    fireEvent.click(screen.getByRole('button', { name: 'Sending Profiles' }))
+    await screen.findByDisplayValue('Awareness Gmail')
+    expect(screen.getByRole('heading', { level: 1, name: 'Sending Profiles' })).toBeInTheDocument()
+  })
+})
+
+describe('sending profile API routes', () => {
+  it('uses the single-profile routes with bearer authentication and explicit payloads', async () => {
+    const api = await vi.importActual('../services/api.js')
+    const fetch = vi.fn().mockResolvedValue({ ok: true, status: 200, json: async () => ({ profile }) })
+    vi.stubGlobal('fetch', fetch)
+    await api.getSendingProfile('admin-token')
+    await api.createSendingProfile('admin-token', { name: 'Name', app_password: password })
+    await api.updateSendingProfile('admin-token', { enabled: true })
+    await api.testSendingProfile('admin-token')
+    fetch.mockResolvedValueOnce({ ok: true, status: 204 })
+    await api.deleteSendingProfile('admin-token')
+    expect(fetch.mock.calls).toEqual([
+      ['/api/sending-profile', { headers: { Authorization: 'Bearer admin-token' } }],
+      ['/api/sending-profile', { method: 'POST', body: JSON.stringify({ name: 'Name', app_password: password }), headers: { Authorization: 'Bearer admin-token', 'Content-Type': 'application/json' } }],
+      ['/api/sending-profile', { method: 'PATCH', body: '{"enabled":true}', headers: { Authorization: 'Bearer admin-token', 'Content-Type': 'application/json' } }],
+      ['/api/sending-profile/test', { method: 'POST', headers: { Authorization: 'Bearer admin-token' } }],
+      ['/api/sending-profile', { method: 'DELETE', headers: { Authorization: 'Bearer admin-token' } }],
+    ])
+  })
+})

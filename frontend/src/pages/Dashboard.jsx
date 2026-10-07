@@ -12,13 +12,13 @@ function RateBar({ value }) {
 export default function Dashboard({ admin, data, error, loading, onLogout, onRefresh, token }) {
   const [activePage, setActivePage] = useState('overview')
   const summary = data?.summary
-  const titles = { overview: 'Awareness at a glance', users: 'User management', templates: 'Email templates', campaigns: 'Simulation campaigns', detection: 'URL detection' }
+  const titles = { overview: 'Awareness at a glance', users: 'User management', templates: 'Email templates', campaigns: 'Simulation campaigns', detection: 'URL detection', sendingProfiles: 'Sending Profiles' }
   return (
     <div className="dashboard-shell">
       <aside className="sidebar">
         <div className="sidebar-brand"><span>P</span> PhishGuard</div>
         <nav aria-label="Main navigation">
-          {[['overview', 'Overview'], ['users', 'Users'], ['templates', 'Templates'], ['campaigns', 'Campaigns'], ['detection', 'Detection']].map(([page, label]) => <button key={page} className={`nav-item ${activePage === page ? 'active' : ''}`} onClick={() => setActivePage(page)}>{label}</button>)}
+          {[['overview', 'Overview'], ['users', 'Users'], ['templates', 'Templates'], ['campaigns', 'Campaigns'], ['detection', 'Detection'], ['sendingProfiles', 'Sending Profiles']].map(([page, label]) => <button key={page} className={`nav-item ${activePage === page ? 'active' : ''}`} onClick={() => setActivePage(page)}>{label}</button>)}
         </nav>
         <div className="sidebar-note"><span className="live-dot" /> Controlled simulation analytics</div>
       </aside>
@@ -50,6 +50,7 @@ export default function Dashboard({ admin, data, error, loading, onLogout, onRef
         {activePage === 'templates' && <Templates token={token} />}
         {activePage === 'campaigns' && <Campaigns token={token} onDataChange={onRefresh} />}
         {activePage === 'detection' && <Detection token={token} />}
+        {activePage === 'sendingProfiles' && <SendingProfiles token={token} />}
       </main>
     </div>
   )
@@ -59,3 +60,4 @@ import Campaigns from './Campaigns.jsx'
 import Detection from './Detection.jsx'
 import Templates from './Templates.jsx'
 import Users from './Users.jsx'
+import SendingProfiles from './SendingProfiles.jsx'
