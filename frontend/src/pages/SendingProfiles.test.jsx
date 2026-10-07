@@ -164,6 +164,19 @@ describe('Sending Profiles workspace', () => {
     expect(screen.getByRole('alert')).toHaveClass('dashboard-error')
   })
 
+  it('refreshes a failed test result instead of retaining the previous successful test', async () => {
+    getSendingProfile.mockResolvedValueOnce({ profile: { ...profile, last_test_succeeded: true, last_tested_at: '2026-10-06T03:15:00+00:00' } })
+      .mockResolvedValueOnce({ profile: { ...profile, last_test_succeeded: false, last_tested_at: '2026-10-07T03:15:00+00:00' } })
+    testSendingProfile.mockRejectedValue(new Error('gmail_authentication_failed'))
+    await openProfile()
+    expect(screen.getByText(/Last test:/)).toHaveTextContent('Last test: Succeeded')
+    fireEvent.click(screen.getByRole('button', { name: 'Send test' }))
+    await screen.findByRole('alert')
+    expect(await screen.findByText(/Last test: Failed/)).toBeInTheDocument()
+    expect(document.querySelector('time')).toHaveAttribute('datetime', '2026-10-07T03:15:00+00:00')
+    expect(screen.getByRole('alert')).toHaveTextContent('Gmail authentication failed. Check the Google app password.')
+  })
+
   it('does not render unexpected error objects or credential-bearing messages', async () => {
     testSendingProfile.mockRejectedValue({ message: `SMTP raw credentials ${password}`, response: { secret: 'stored-ciphertext' } })
     await openProfile()

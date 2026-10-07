@@ -71,7 +71,15 @@ export default function SendingProfiles({ token }) {
         else if (action === 'toggle') setNotice(result.profile.enabled ? 'Profile enabled.' : 'Profile disabled.')
         else setNotice(`Test email sent to ${result.profile.from_email}.`)
       }
-    } catch (requestError) { setError(safeError(requestError)) } finally { setPending('') }
+    } catch (requestError) {
+      setError(safeError(requestError))
+      if (action === 'test') {
+        try {
+          const result = await getSendingProfile(token)
+          setProfile(result.profile)
+        } catch { /* Keep the original test error if refreshing the profile fails. */ }
+      }
+    } finally { setPending('') }
   }
 
   return <section className="workspace-page sending-profile-page">

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   assignRecipients,
   createCampaign,
@@ -18,9 +18,10 @@ export default function Campaigns({ token, onDataChange }) {
   const [templates, setTemplates] = useState([])
   const [profile, setProfile] = useState(null)
   const [selectedCampaign, setSelectedCampaign] = useState(null)
-  const [recipients, setRecipients] = useState([])
+  const [review, setReview] = useState(null)
+  const [reviewRequest, setReviewRequest] = useState(null)
+  const activeReviewRequest = useRef(null)
   const [selectedUsers, setSelectedUsers] = useState([])
-  const [delivery, setDelivery] = useState(null)
   const [confirmation, setConfirmation] = useState('')
   const [sending, setSending] = useState(false)
   const [form, setForm] = useState({ campaign_name: '', template_id: '', status: 'draft', sending_profile_id: '' })
@@ -62,28 +63,34 @@ export default function Campaigns({ token, onDataChange }) {
     }
   }
 
-  const refreshDelivery = async (campaignId) => {
-    const result = await getDeliveryPreview(token, campaignId)
-    setDelivery(result.preview)
+  const beginReview = (campaignId) => {
+    const request = { campaignId, generation: (activeReviewRequest.current?.generation || 0) + 1 }
+    activeReviewRequest.current = request
+    setReviewRequest(request)
+    setReview(null)
     setConfirmation('')
+    return request
+  }
+
+  const refreshDelivery = async (request) => {
+    const [recipientData, previewData] = await Promise.all([
+      listRecipients(token, request.campaignId),
+      getDeliveryPreview(token, request.campaignId),
+    ])
+    if (activeReviewRequest.current !== request) return
+    setReview({ request, recipients: recipientData.recipients, delivery: previewData.preview })
   }
 
   const openRecipients = async (campaign) => {
+    const request = beginReview(campaign.campaign_id)
     setSelectedCampaign(campaign)
     setSelectedUsers([])
-    setDelivery(null)
-    setConfirmation('')
     setError('')
     setNotice('')
     try {
-      const [recipientData, previewData] = await Promise.all([
-        listRecipients(token, campaign.campaign_id),
-        getDeliveryPreview(token, campaign.campaign_id),
-      ])
-      setRecipients(recipientData.recipients)
-      setDelivery(previewData.preview)
+      await refreshDelivery(request)
     } catch (requestError) {
-      setError(requestError.message)
+      if (activeReviewRequest.current === request) setError(requestError.message)
     }
   }
 
@@ -95,43 +102,48 @@ export default function Campaigns({ token, onDataChange }) {
 
   const assign = async () => {
     if (!selectedCampaign || selectedUsers.length === 0) return
+    const request = beginReview(selectedCampaign.campaign_id)
     setError('')
     setNotice('')
     try {
       const result = await assignRecipients(
         token,
-        selectedCampaign.campaign_id,
+        request.campaignId,
         selectedUsers,
       )
-      const recipientData = await listRecipients(token, selectedCampaign.campaign_id)
-      setRecipients(recipientData.recipients)
-      await refreshDelivery(selectedCampaign.campaign_id)
+      onDataChange()
+      if (activeReviewRequest.current !== request) return
+      await refreshDelivery(request)
+      if (activeReviewRequest.current !== request) return
       setSelectedUsers([])
       setNotice(`${result.recipients.length} recipients added; ${result.skipped_existing} already assigned.`)
-      onDataChange()
     } catch (requestError) {
-      setError(requestError.message)
+      if (activeReviewRequest.current === request) setError(requestError.message)
     }
   }
 
   const deliver = async () => {
     if (!selectedCampaign || !canSend) return
+    let request = activeReviewRequest.current
+    if (request !== reviewRequest) return
     setSending(true)
     setError('')
     setNotice('')
     try {
       const result = await sendCampaignEmails(
         token,
-        selectedCampaign.campaign_id,
+        request.campaignId,
         confirmation,
       )
+      onDataChange()
+      if (activeReviewRequest.current !== request) return
       setNotice(isGmail
         ? `${result.delivered} authorized simulation emails delivered through Gmail.`
         : `${result.delivered} authorized simulation emails delivered to the local Mailpit inbox.`)
-      await refreshDelivery(selectedCampaign.campaign_id)
-      onDataChange()
+      request = beginReview(request.campaignId)
+      await refreshDelivery(request)
     } catch (requestError) {
-      setError(requestError.message)
+      if (activeReviewRequest.current === request) setError(requestError.message)
     } finally {
       setSending(false)
     }
@@ -144,9 +156,11 @@ export default function Campaigns({ token, onDataChange }) {
       setCampaigns((current) => current.filter(
         (item) => item.campaign_id !== campaign.campaign_id,
       ))
-      if (selectedCampaign?.campaign_id === campaign.campaign_id) {
+      if (activeReviewRequest.current?.campaignId === campaign.campaign_id) {
+        activeReviewRequest.current = null
         setSelectedCampaign(null)
-        setDelivery(null)
+        setReviewRequest(null)
+        setReview(null)
       }
       onDataChange()
     } catch (requestError) {
@@ -159,12 +173,15 @@ export default function Campaigns({ token, onDataChange }) {
     setNotice('Tracking link copied. Share it only within an authorized awareness exercise.')
   }
 
+  const isCurrentReview = review?.request === reviewRequest && reviewRequest?.campaignId === selectedCampaign?.campaign_id
+  const recipients = isCurrentReview ? review.recipients : []
+  const delivery = isCurrentReview ? review.delivery : null
   const isGmail = delivery?.delivery_method === 'gmail'
   const campaignLimitExceeded = delivery && (isGmail
     ? delivery.allowed_recipients.length + delivery.blocked_recipients.length
     : recipients.length) > delivery.campaign_recipient_limit
   const hourlyLimitExceeded = delivery && delivery.hourly_delivered_count + delivery.allowed_recipients.length > delivery.hourly_delivery_limit
-  const canSend = delivery && !sending && Boolean(delivery.confirmation_phrase)
+  const canSend = isCurrentReview && delivery && !sending && Boolean(delivery.confirmation_phrase)
     && confirmation === delivery.confirmation_phrase && delivery.blocked_recipients.length === 0
     && delivery.delivery_enabled && delivery.public_url_safe && delivery.allowed_recipients.length > 0
     && (!isGmail || delivery.profile_ready) && !campaignLimitExceeded && !hourlyLimitExceeded

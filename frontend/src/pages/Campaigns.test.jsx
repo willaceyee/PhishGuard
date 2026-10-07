@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import Campaigns from './Campaigns.jsx'
 
 const profile = {
@@ -10,6 +10,9 @@ const profile = {
 }
 const user = { user_id: 1, name: 'Approved user', email: 'approved@example.com', simulation_email_approved: true }
 const campaign = { campaign_id: 3, campaign_name: 'Awareness exercise', template_id: 2, status: 'draft', sending_profile_id: 7, delivery_method: 'gmail', sending_profile: profile }
+const otherCampaign = { ...campaign, campaign_id: 4, campaign_name: 'Second exercise' }
+const recipient = { recipient_id: 31, user, tracking_url: 'https://training.example.org/r/first' }
+const otherRecipient = { recipient_id: 41, user: { ...user, user_id: 2, name: 'Second user', email: 'second@example.com' }, tracking_url: 'https://training.example.org/r/second' }
 const gmailPreview = {
   delivery_method: 'gmail', real_delivery: true, profile, profile_ready: true,
   delivery_enabled: true, public_url_safe: true, campaign_recipient_limit: 10,
@@ -21,22 +24,28 @@ const gmailPreview = {
 let savedProfile
 let preview
 let requests
+let savedCampaigns
+let deferredRequests
 
 beforeEach(() => {
   savedProfile = profile
   preview = gmailPreview
   requests = []
+  savedCampaigns = [campaign]
+  deferredRequests = []
   vi.stubGlobal('fetch', vi.fn(async (path, options = {}) => {
     requests.push({ path, ...options })
+    const deferredIndex = deferredRequests.findIndex((request) => request.path === path && request.method === (options.method || 'GET'))
+    if (deferredIndex !== -1) return deferredRequests.splice(deferredIndex, 1)[0].promise
     let body
     if (path === '/api/sending-profile') body = { profile: savedProfile }
     else if (path === '/api/users') body = { users: [user] }
     else if (path === '/api/templates') body = { templates: [{ template_id: 2, template_name: 'Awareness' }] }
-    else if (path === '/api/campaigns' && options.method === 'POST') body = { campaign: { ...campaign, ...JSON.parse(options.body) } }
-    else if (path === '/api/campaigns') body = { campaigns: [campaign] }
-    else if (path === '/api/campaigns/3/recipients') body = { recipients: [] }
-    else if (path === '/api/campaigns/3/delivery-preview') body = { preview }
-    else if (path === '/api/campaigns/3/send') body = { delivered: 1 }
+    else if (path === '/api/campaigns' && options.method === 'POST') body = { campaign: { ...campaign, ...JSON.parse(options.body), campaign_id: 8 } }
+    else if (path === '/api/campaigns') body = { campaigns: savedCampaigns }
+    else if (/^\/api\/campaigns\/[34]\/recipients$/.test(path)) body = options.method === 'POST' ? { recipients: [recipient], skipped_existing: 0 } : { recipients: [] }
+    else if (/^\/api\/campaigns\/[34]\/delivery-preview$/.test(path)) body = { preview }
+    else if (/^\/api\/campaigns\/[34]\/send$/.test(path)) body = { delivered: 1 }
     else throw new Error(`Unexpected request: ${path}`)
     return { ok: true, status: 200, json: async () => body }
   }))
@@ -49,7 +58,14 @@ afterEach(() => {
 
 async function openCampaigns() {
   render(<Campaigns token="admin-token" onDataChange={vi.fn()} />)
-  await screen.findByRole('button', { name: 'Recipients & delivery' })
+  await screen.findAllByRole('button', { name: 'Recipients & delivery' })
+}
+
+function deferResponse(path, method = 'GET') {
+  let resolve
+  const promise = new Promise((done) => { resolve = done })
+  deferredRequests.push({ path, method, promise })
+  return (body) => resolve({ ok: true, status: 200, json: async () => body })
 }
 
 async function openPreview() {
@@ -179,5 +195,116 @@ describe('Mailpit delivery compatibility', () => {
     expect(send).toBeEnabled()
     fireEvent.click(send)
     expect(await screen.findByRole('status')).toHaveTextContent('1 authorized simulation emails delivered to the local Mailpit inbox.')
+  })
+})
+
+describe('Campaign review response ordering', () => {
+  it('keeps the selected campaign recipients and blocked preview when an earlier campaign resolves last', async () => {
+    savedCampaigns = [campaign, otherCampaign]
+    const firstRecipients = deferResponse('/api/campaigns/3/recipients')
+    const firstPreview = deferResponse('/api/campaigns/3/delivery-preview')
+    const secondRecipients = deferResponse('/api/campaigns/4/recipients')
+    const secondPreview = deferResponse('/api/campaigns/4/delivery-preview')
+    await openCampaigns()
+    const open = screen.getAllByRole('button', { name: 'Recipients & delivery' })
+    fireEvent.click(open[0])
+    fireEvent.click(open[1])
+    await act(async () => {
+      secondRecipients({ recipients: [otherRecipient] })
+      secondPreview({ preview: { ...gmailPreview, profile_ready: false, subject: '[SECURITY SIMULATION] Second' } })
+    })
+    confirm('SEND 1 REAL EMAIL')
+    expect(screen.getByRole('button', { name: 'Send real Gmail emails' })).toBeDisabled()
+    await act(async () => {
+      firstRecipients({ recipients: [recipient] })
+      firstPreview({ preview: gmailPreview })
+    })
+    expect(screen.getByText(otherRecipient.tracking_url)).toBeInTheDocument()
+    expect(screen.queryByText(recipient.tracking_url)).not.toBeInTheDocument()
+    expect(screen.getByText('Gmail profile not ready')).toBeInTheDocument()
+    const send = screen.getByRole('button', { name: 'Send real Gmail emails' })
+    expect(send).toBeDisabled()
+    fireEvent.click(send)
+    expect(requests.some((request) => request.path.endsWith('/send'))).toBe(false)
+  })
+
+  it('clears a previous review while loading and ignores older responses for the same campaign', async () => {
+    await openPreview()
+    confirm()
+    const olderRecipients = deferResponse('/api/campaigns/3/recipients')
+    const olderPreview = deferResponse('/api/campaigns/3/delivery-preview')
+    const latestRecipients = deferResponse('/api/campaigns/3/recipients')
+    const latestPreview = deferResponse('/api/campaigns/3/delivery-preview')
+    fireEvent.click(screen.getByRole('button', { name: 'Recipients & delivery' }))
+    expect(screen.queryByRole('button', { name: 'Send real Gmail emails' })).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Recipients & delivery' }))
+    await act(async () => {
+      latestRecipients({ recipients: [otherRecipient] })
+      latestPreview({ preview: { ...gmailPreview, public_url_safe: false } })
+    })
+    confirm('SEND 1 REAL EMAIL')
+    await act(async () => {
+      olderRecipients({ recipients: [recipient] })
+      olderPreview({ preview: gmailPreview })
+    })
+    expect(screen.getByText(otherRecipient.tracking_url)).toBeInTheDocument()
+    expect(screen.queryByText(recipient.tracking_url)).not.toBeInTheDocument()
+    expect(screen.getByText('Unsafe public URL')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Send real Gmail emails' })).toBeDisabled()
+  })
+
+  it.each(['assignment', 'refresh'])('ignores an earlier campaign recipient %s after selecting another campaign', async (stage) => {
+    savedCampaigns = [campaign, otherCampaign]
+    await openCampaigns()
+    const open = screen.getAllByRole('button', { name: 'Recipients & delivery' })
+    fireEvent.click(open[0])
+    await screen.findByRole('heading', { name: 'Email delivery preview' })
+    const assignment = stage === 'assignment' ? deferResponse('/api/campaigns/3/recipients', 'POST') : null
+    const oldRecipients = deferResponse('/api/campaigns/3/recipients')
+    const oldPreview = deferResponse('/api/campaigns/3/delivery-preview')
+    fireEvent.click(screen.getByRole('checkbox'))
+    fireEvent.click(screen.getByRole('button', { name: 'Assign selected users' }))
+    if (stage === 'refresh') await waitFor(() => expect(requests.filter((request) => request.path === '/api/campaigns/3/recipients' && !request.method)).toHaveLength(2))
+    preview = { ...gmailPreview, profile_ready: false }
+    fireEvent.click(open[1])
+    await screen.findByText('Gmail profile not ready')
+    fireEvent.click(screen.getByRole('checkbox'))
+    await act(async () => {
+      assignment?.({ recipients: [recipient], skipped_existing: 0 })
+      oldRecipients({ recipients: [recipient] })
+      oldPreview({ preview: gmailPreview })
+    })
+    expect(screen.getByRole('checkbox')).toBeChecked()
+    expect(screen.queryByText(recipient.tracking_url)).not.toBeInTheDocument()
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
+    expect(screen.getByText('Gmail profile not ready')).toBeInTheDocument()
+    confirm('SEND 1 REAL EMAIL')
+    expect(screen.getByRole('button', { name: 'Send real Gmail emails' })).toBeDisabled()
+  })
+
+  it.each(['send', 'refresh'])('keeps the new selection unchanged when an earlier campaign %s completes', async (stage) => {
+    savedCampaigns = [campaign, otherCampaign]
+    await openCampaigns()
+    const open = screen.getAllByRole('button', { name: 'Recipients & delivery' })
+    fireEvent.click(open[0])
+    await screen.findByRole('heading', { name: 'Email delivery preview' })
+    const send = stage === 'send' ? deferResponse('/api/campaigns/3/send', 'POST') : null
+    const oldPreview = deferResponse('/api/campaigns/3/delivery-preview')
+    confirm('SEND 1 REAL EMAIL')
+    fireEvent.click(screen.getByRole('button', { name: 'Send real Gmail emails' }))
+    if (stage === 'refresh') await waitFor(() => expect(requests.filter((request) => request.path === '/api/campaigns/3/delivery-preview')).toHaveLength(2))
+    preview = { ...gmailPreview, public_url_safe: false, subject: '[SECURITY SIMULATION] Second' }
+    fireEvent.click(open[1])
+    await screen.findByText('Unsafe public URL')
+    confirm('SEND 1 REAL EMAIL')
+    await act(async () => {
+      send?.({ delivered: 1 })
+      oldPreview({ preview: gmailPreview })
+    })
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
+    expect(screen.getByText('[SECURITY SIMULATION] Second')).toBeInTheDocument()
+    expect(screen.getByLabelText(/to confirm/)).toHaveValue('SEND 1 REAL EMAIL')
+    expect(screen.getByText('Unsafe public URL')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Send real Gmail emails' })).toBeDisabled()
   })
 })
