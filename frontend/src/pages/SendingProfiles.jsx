@@ -29,7 +29,8 @@ export default function SendingProfiles({ token }) {
   const [pending, setPending] = useState('')
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
-  const lastTestedAt = profile?.last_tested_at
+  const [testStatusAvailable, setTestStatusAvailable] = useState(true)
+  const lastTestedAt = testStatusAvailable ? profile?.last_tested_at : null
   const testTimestamp = lastTestedAt && !/(?:Z|[+-]\d{2}:?\d{2})$/i.test(lastTestedAt) ? `${lastTestedAt}Z` : lastTestedAt
 
   useEffect(() => {
@@ -37,6 +38,7 @@ export default function SendingProfiles({ token }) {
     getSendingProfile(token).then((data) => {
       if (cancelled) return
       setProfile(data.profile)
+      setTestStatusAvailable(true)
       if (data.profile) setForm({ name: data.profile.name, from_name: data.profile.from_name, from_email: data.profile.from_email })
     }).catch((requestError) => { if (!cancelled) setError(safeError(requestError)) }).finally(() => { if (!cancelled) setLoading(false) })
     return () => { cancelled = true }
@@ -64,6 +66,7 @@ export default function SendingProfiles({ token }) {
         else result = await testSendingProfile(token)
         if (action === 'create' || action === 'replace') setPassword('')
         setProfile(result.profile)
+        setTestStatusAvailable(true)
         if (action === 'create' || action === 'save') setForm({ name: result.profile.name, from_name: result.profile.from_name, from_email: result.profile.from_email })
         if (action === 'create') setNotice('Profile created.')
         else if (action === 'save') setNotice('Metadata saved.')
@@ -74,9 +77,11 @@ export default function SendingProfiles({ token }) {
     } catch (requestError) {
       setError(safeError(requestError))
       if (action === 'test') {
+        setTestStatusAvailable(false)
         try {
           const result = await getSendingProfile(token)
           setProfile(result.profile)
+          setTestStatusAvailable(true)
         } catch { /* Keep the original test error if refreshing the profile fails. */ }
       }
     } finally { setPending('') }
@@ -92,7 +97,7 @@ export default function SendingProfiles({ token }) {
       <label htmlFor="profile-display-name">Display name</label><input id="profile-display-name" maxLength={120} value={form.from_name} disabled={!!pending} onChange={(event) => setForm({ ...form, from_name: event.target.value })} required />
       <label htmlFor="profile-email">Gmail address</label><input id="profile-email" type="email" value={form.from_email} disabled={!!pending} onChange={(event) => setForm({ ...form, from_email: event.target.value })} required />
       {profile && <p className="credential-indicator">App password: {profile.credential_configured ? 'Configured' : 'Not configured'}</p>}
-      {profile && <p className="muted">Last test: {lastTestedAt ? profile.last_test_succeeded ? 'Succeeded' : 'Failed' : 'Not tested'}{lastTestedAt && <> · <time dateTime={testTimestamp}>{new Date(testTimestamp).toLocaleString()}</time></>}</p>}
+      {profile && <p className="muted">Last test: {!testStatusAvailable ? 'Unavailable' : lastTestedAt ? profile.last_test_succeeded ? 'Succeeded' : 'Failed' : 'Not tested'}{lastTestedAt && <> · <time dateTime={testTimestamp}>{new Date(testTimestamp).toLocaleString()}</time></>}</p>}
       <label htmlFor="profile-password">Google app password</label><input id="profile-password" type="password" autoComplete="new-password" value={password} disabled={!!pending} onChange={(event) => setPassword(event.target.value)} required={!profile} />
       {profile && <small>Enter a new app password only when replacing the stored credential. Save metadata does not replace it.</small>}
       <div className="form-actions sending-profile-actions">

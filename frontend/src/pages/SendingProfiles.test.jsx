@@ -177,6 +177,28 @@ describe('Sending Profiles workspace', () => {
     expect(screen.getByRole('alert')).toHaveTextContent('Gmail authentication failed. Check the Google app password.')
   })
 
+  it('marks test status unavailable when failure refresh fails and restores persisted status after saving', async () => {
+    getSendingProfile.mockResolvedValueOnce({ profile: { ...profile, last_test_succeeded: true, last_tested_at: '2026-10-06T03:15:00+00:00' } })
+      .mockRejectedValueOnce(new Error('network failed'))
+    testSendingProfile.mockRejectedValue(new Error('gmail_authentication_failed'))
+    updateSendingProfile.mockResolvedValue({ profile: { ...profile, name: 'Updated name', last_test_succeeded: false, last_tested_at: '2026-10-07T03:15:00+00:00' } })
+    await openProfile()
+    expect(screen.getByText(/Last test:/)).toHaveTextContent('Last test: Succeeded')
+    fireEvent.click(screen.getByRole('button', { name: 'Send test' }))
+    expect(await screen.findByText('Last test: Unavailable')).toBeInTheDocument()
+    expect(screen.getByText(/Last test:/)).not.toHaveTextContent('Succeeded')
+    expect(document.querySelector('time')).not.toBeInTheDocument()
+    expect(screen.getByRole('alert')).toHaveTextContent('Gmail authentication failed. Check the Google app password.')
+    expect(screen.getByLabelText('Profile name')).toBeEnabled()
+    expect(screen.getByRole('button', { name: 'Save metadata' })).toBeEnabled()
+    fireEvent.change(screen.getByLabelText('Profile name'), { target: { value: 'Updated name' } })
+    expect(screen.getByText('Last test: Unavailable')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Save metadata' }))
+    await screen.findByText('Metadata saved.')
+    expect(screen.getByText(/Last test:/)).toHaveTextContent('Last test: Failed')
+    expect(document.querySelector('time')).toHaveAttribute('datetime', '2026-10-07T03:15:00+00:00')
+  })
+
   it('does not render unexpected error objects or credential-bearing messages', async () => {
     testSendingProfile.mockRejectedValue({ message: `SMTP raw credentials ${password}`, response: { secret: 'stored-ciphertext' } })
     await openProfile()
