@@ -2,8 +2,11 @@ import ipaddress
 import smtplib
 import ssl
 from datetime import timedelta
+from email.errors import HeaderParseError
+from email.headerregistry import Address
 from email.message import EmailMessage
 from email.utils import formataddr
+from threading import Lock
 from urllib.parse import urlparse
 
 from cryptography.fernet import InvalidToken
@@ -16,6 +19,7 @@ from app.sending_profiles import decrypt_app_password
 
 SIMULATION_PREFIX = "[SECURITY SIMULATION]"
 LINK_PLACEHOLDER = "[INSERT CAMPAIGN TRACKING LINK]"
+GMAIL_SEND_LOCK = Lock()
 
 
 def tracking_url(recipient):
@@ -55,8 +59,18 @@ def public_gmail_url_is_safe():
     )
 
 
-def allowed_recipient(user):
-    return user.simulation_email_approved
+def gmail_recipient_address(user):
+    try:
+        address = Address(addr_spec=user.email)
+    except (ValueError, HeaderParseError):
+        return None
+    return address.addr_spec if address.username and address.domain else None
+
+
+def allowed_recipient(user, gmail=False):
+    return user.simulation_email_approved and (
+        not gmail or gmail_recipient_address(user) is not None
+    )
 
 
 def pending_recipients(campaign):
@@ -81,8 +95,10 @@ def delivery_preview(campaign):
     gmail = campaign.sending_profile_id is not None
     profile = campaign.sending_profile if gmail else None
     pending = pending_recipients(campaign)
-    allowed = [recipient for recipient in pending if allowed_recipient(recipient.user)]
-    blocked = [recipient for recipient in pending if not allowed_recipient(recipient.user)]
+    allowed = [recipient for recipient in pending if allowed_recipient(recipient.user, gmail)]
+    blocked = [
+        recipient for recipient in pending if not allowed_recipient(recipient.user, gmail)
+    ]
     noun = "EMAIL" if len(allowed) == 1 else "EMAILS"
     phrase = f"SEND {len(allowed)} {'REAL' if gmail else 'AUTHORIZED'} {noun}"
     return {
@@ -120,7 +136,7 @@ def hourly_delivery_count(delivery_channel=None):
     return db.session.scalar(statement) or 0
 
 
-def message_for(campaign, recipient):
+def message_for(campaign, recipient, to_address=None):
     link = tracking_url(recipient)
     body = campaign.template.body
     if LINK_PLACEHOLDER in body:
@@ -139,15 +155,27 @@ def message_for(campaign, recipient):
         message["From"] = formataddr((profile.from_name, profile.from_email))
     else:
         message["From"] = current_app.config["MAIL_FROM"]
-    message["To"] = recipient.user.email
+    message["To"] = to_address if to_address is not None else recipient.user.email
     message["Subject"] = f"{SIMULATION_PREFIX} {campaign.template.subject}"
     message["X-PhishGuard-Simulation"] = "authorized-training"
     message.set_content(body)
     return message
 
 
-def send_campaign(campaign):
+def send_campaign(campaign, confirmation=None):
+    if campaign.sending_profile_id is not None:
+        with GMAIL_SEND_LOCK:
+            db.session.expire_all()
+            if campaign.sending_profile_id is None:
+                raise ValueError("Gmail sending profile is no longer selected")
+            return _send_campaign(campaign, confirmation=confirmation)
+    return _send_campaign(campaign)
+
+
+def _send_campaign(campaign, confirmation=None):
     preview = delivery_preview(campaign)
+    if confirmation is not None and confirmation != preview["confirmation_phrase"]:
+        raise ValueError("Review the updated delivery preview and confirm again")
     channel = preview["delivery_method"]
     gmail = channel == "gmail"
     if not preview["delivery_enabled"]:
@@ -159,12 +187,14 @@ def send_campaign(campaign):
             raise ValueError("Gmail delivery requires a public HTTPS URL")
         raise ValueError("PUBLIC_BASE_URL must use HTTPS outside localhost")
     if preview["blocked_recipients"]:
+        if gmail:
+            raise PermissionError("Every Gmail recipient must be approved with one valid mailbox")
         raise PermissionError("Every recipient must be explicitly allowlisted")
 
     pending = [
         recipient
         for recipient in pending_recipients(campaign)
-        if allowed_recipient(recipient.user)
+        if allowed_recipient(recipient.user, gmail)
     ]
     if not pending:
         raise ValueError("No undelivered allowlisted recipients")
@@ -176,6 +206,10 @@ def send_campaign(campaign):
     ]:
         raise ValueError("Hourly email safety limit would be exceeded")
 
+    addresses = {
+        recipient.recipient_id: gmail_recipient_address(recipient.user)
+        for recipient in pending
+    } if gmail else {}
     delivered = 0
     try:
         with smtplib.SMTP(
@@ -195,7 +229,12 @@ def send_campaign(campaign):
                 except (RuntimeError, ValueError, InvalidToken) as error:
                     raise ConnectionError("Gmail credentials are unavailable") from error
             for recipient in pending:
-                smtp.send_message(message_for(campaign, recipient))
+                address = addresses[recipient.recipient_id] if gmail else None
+                message = message_for(campaign, recipient, to_address=address)
+                if gmail:
+                    smtp.send_message(message, to_addrs=[address])
+                else:
+                    smtp.send_message(message)
                 db.session.add(
                     TrackingEvent(
                         recipient=recipient, event_type="email_delivered",

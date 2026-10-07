@@ -1,14 +1,20 @@
 import smtplib
 import ssl
+from contextlib import contextmanager
 from datetime import timedelta
+from threading import Event, Lock, Thread, current_thread
 from unittest.mock import patch
 
 import pytest
 
-from app import email_delivery
+from app import create_app, email_delivery
 from app.extensions import db
-from app.models import Campaign, CampaignRecipient, SendingProfile, TrackingEvent, User, utc_now
+from app.models import (
+    Admin, Campaign, CampaignRecipient, EmailTemplate, SendingProfile, TrackingEvent,
+    User, utc_now,
+)
 from app.sending_profiles import decrypt_app_password, encrypt_app_password
+from config import TestConfig as BackendTestConfig
 
 
 def create_campaign_with_user(client, auth_headers):
@@ -456,7 +462,7 @@ def test_gmail_sends_separate_labeled_messages_after_starttls_and_login(
         smtp = smtp_class.return_value.__enter__.return_value
         smtp.starttls.side_effect = lambda **kwargs: steps.append("starttls")
         smtp.login.side_effect = lambda *args: steps.append("login")
-        smtp.send_message.side_effect = lambda message: steps.append("send")
+        smtp.send_message.side_effect = lambda message, **kwargs: steps.append("send")
         response = client.post(
             f"/api/campaigns/{gmail_campaign.campaign_id}/send",
             headers=auth_headers,
@@ -798,7 +804,7 @@ def test_gmail_partial_failure_commits_success_and_retries_only_remaining_recipi
     with patch("smtplib.SMTP") as smtp_class, patch.object(
         db.session, "commit", wraps=db.session.commit
     ) as commit:
-        def accept_first_message(message):
+        def accept_first_message(message, **kwargs):
             commits_before_each_message.append(commit.call_count)
             messages.append(message)
             if len(messages) == 2:
@@ -880,6 +886,138 @@ def test_gmail_provider_failures_are_sanitized_and_record_attempted_channel(
     assert gmail_campaign.status == "delivery_failed"
 
 
+@pytest.mark.parametrize(
+    "email",
+    [
+        "approved@example.com, unapproved@example.com",
+        "Approved <approved@example.com>, Unapproved <unapproved@example.com>",
+        "training-list: approved@example.com, unapproved@example.com;",
+        "approved@example.com; unapproved@example.com",
+        "not-an-address",
+        "@example.com",
+        "approved@",
+        "approved@example.com trailing",
+        "approved@example.com\nBcc: unapproved@example.com",
+    ],
+)
+def test_gmail_preview_and_send_block_approved_rows_without_one_valid_mailbox(
+    client, auth_headers, gmail_campaign, email
+):
+    gmail_campaign.recipients[0].user.email = email
+    db.session.commit()
+    preview = client.get(
+        f"/api/campaigns/{gmail_campaign.campaign_id}/delivery-preview",
+        headers=auth_headers,
+    ).get_json()["preview"]
+    assert preview["allowed_recipients"] == []
+    assert [user["email"] for user in preview["blocked_recipients"]] == [email]
+    assert preview["confirmation_phrase"] == "SEND 0 REAL EMAILS"
+    with patch("smtplib.SMTP") as smtp_class:
+        response = client.post(
+            f"/api/campaigns/{gmail_campaign.campaign_id}/send",
+            headers=auth_headers,
+            json={"confirmation": "SEND 0 REAL EMAILS"},
+        )
+    assert response.status_code == 403
+    smtp_class.assert_not_called()
+    assert db.session.query(TrackingEvent).count() == 0
+
+
+@pytest.mark.parametrize(
+    "email,envelope_address",
+    [
+        ("approved+training@example.com", "approved+training@example.com"),
+        ('"approved user"@example.com', '"approved user"@example.com'),
+        ("approved@example.com (Training)", "approved@example.com"),
+    ],
+)
+def test_gmail_binds_delivery_to_one_validated_envelope_recipient(
+    client, auth_headers, gmail_campaign, email, envelope_address
+):
+    gmail_campaign.recipients[0].user.email = email
+    db.session.commit()
+    with patch("smtplib.SMTP") as smtp_class:
+        response = client.post(
+            f"/api/campaigns/{gmail_campaign.campaign_id}/send",
+            headers=auth_headers,
+            json={"confirmation": "SEND 1 REAL EMAIL"},
+        )
+    assert response.status_code == 200
+    smtp = smtp_class.return_value.__enter__.return_value
+    assert smtp.send_message.call_args.kwargs == {"to_addrs": [envelope_address]}
+    assert smtp.send_message.call_args.args[0]["To"] == envelope_address
+
+
+def test_gmail_message_uses_the_mailbox_validated_before_smtp_setup(
+    client, auth_headers, gmail_campaign
+):
+    def change_mailbox_during_setup(**kwargs):
+        gmail_campaign.recipients[0].user.email = "changed@example.com\nBcc: unapproved@example.com"
+        db.session.commit()
+
+    with patch("smtplib.SMTP") as smtp_class:
+        smtp = smtp_class.return_value.__enter__.return_value
+        smtp.starttls.side_effect = change_mailbox_during_setup
+        response = client.post(
+            f"/api/campaigns/{gmail_campaign.campaign_id}/send",
+            headers=auth_headers,
+            json={"confirmation": "SEND 1 REAL EMAIL"},
+        )
+    assert response.status_code == 200
+    assert smtp.send_message.call_args.args[0]["To"] == "jordan@example.com"
+    assert smtp.send_message.call_args.kwargs == {"to_addrs": ["jordan@example.com"]}
+
+
+@pytest.mark.parametrize("change", ["added", "delivered"])
+def test_gmail_requires_fresh_confirmation_when_pending_count_changes_under_lock(
+    client, auth_headers, gmail_campaign, app, change
+):
+    campaign_id = gmail_campaign.campaign_id
+    if change == "delivered":
+        add_gmail_recipient(gmail_campaign, 2)
+    original_phrase = "SEND 1 REAL EMAIL" if change == "added" else "SEND 2 REAL EMAILS"
+
+    @contextmanager
+    def lock_after_recipient_change():
+        with app.app_context():
+            current = db.session.get(Campaign, campaign_id)
+            if change == "added":
+                add_gmail_recipient(current, 2)
+            else:
+                db.session.add(
+                    TrackingEvent(
+                        recipient=current.recipients[0], event_type="email_delivered",
+                        delivery_channel="gmail",
+                    )
+                )
+                db.session.commit()
+        yield
+
+    with patch("app.email_delivery.GMAIL_SEND_LOCK", lock_after_recipient_change()), patch(
+        "smtplib.SMTP"
+    ) as smtp_class:
+        response = client.post(
+            f"/api/campaigns/{campaign_id}/send",
+            headers=auth_headers,
+            json={"confirmation": original_phrase},
+        )
+    assert response.status_code == 400
+    smtp_class.assert_not_called()
+    preview = client.get(
+        f"/api/campaigns/{campaign_id}/delivery-preview", headers=auth_headers
+    ).get_json()["preview"]
+    fresh_phrase = "SEND 2 REAL EMAILS" if change == "added" else "SEND 1 REAL EMAIL"
+    assert preview["confirmation_phrase"] == fresh_phrase
+    with patch("smtplib.SMTP"):
+        retry = client.post(
+            f"/api/campaigns/{campaign_id}/send",
+            headers=auth_headers,
+            json={"confirmation": fresh_phrase},
+        )
+    assert retry.status_code == 200
+    assert retry.get_json()["delivered"] == (2 if change == "added" else 1)
+
+
 @pytest.mark.parametrize("credential_problem", ["missing_key", "invalid_ciphertext", "missing"])
 def test_gmail_credential_failures_do_not_expose_secrets_or_send_messages(
     client, auth_headers, gmail_campaign, app, credential_problem, caplog
@@ -908,3 +1046,183 @@ def test_gmail_credential_failures_do_not_expose_secrets_or_send_messages(
     assert [(event.event_type, event.delivery_channel) for event in events] == [
         ("email_failed", "gmail")
     ]
+
+
+@pytest.fixture()
+def gmail_concurrency_app(tmp_path):
+    class ConcurrentConfig(BackendTestConfig):
+        SQLALCHEMY_DATABASE_URI = f"sqlite:///{(tmp_path / 'gmail-concurrent.db').as_posix()}"
+        PUBLIC_BASE_URL = "https://training.example.com"
+
+    app = create_app(ConcurrentConfig)
+    with app.app_context():
+        db.create_all()
+        admin = Admin(name="Admin", email="admin@example.com", password_hash="unused")
+        template = EmailTemplate(template_name="Training", subject="Training", body="Training")
+        profile = SendingProfile(
+            name="Training Gmail", from_name="Simulation Admin",
+            from_email="simulation@gmail.com",
+            encrypted_app_password=encrypt_app_password("abcdefghijklmnop"),
+            enabled=True, last_test_succeeded=True, last_tested_at=utc_now(),
+        )
+        campaigns = [
+            Campaign(
+                campaign_name=f"Concurrent exercise {index}", admin=admin,
+                template=template, sending_profile=profile,
+            )
+            for index in range(3)
+        ]
+        db.session.add_all([
+            CampaignRecipient(
+                campaign=campaign,
+                user=User(
+                    name=f"Employee {index}", email=f"employee{index}@example.com",
+                    simulation_email_approved=True,
+                ),
+                tracking_token=f"concurrent-tracking-{index}",
+            )
+            for index, campaign in enumerate(campaigns)
+        ])
+        db.session.commit()
+        campaign_ids = [campaign.campaign_id for campaign in campaigns]
+    yield app, campaign_ids
+    with app.app_context():
+        db.drop_all()
+        db.session.remove()
+        db.engine.dispose()
+
+
+@pytest.mark.parametrize("same_campaign,prior_count", [(False, 19), (True, 0)])
+def test_overlapping_gmail_sends_recheck_hourly_allowance_and_pending_recipients(
+    gmail_concurrency_app, same_campaign, prior_count
+):
+    app, campaign_ids = gmail_concurrency_app
+    with app.app_context():
+        historical = db.session.get(Campaign, campaign_ids[2]).recipients[0]
+        db.session.add_all([
+            TrackingEvent(
+                recipient=historical, event_type="email_delivered", delivery_channel="gmail"
+            )
+            for _ in range(prior_count)
+        ])
+        db.session.commit()
+
+    first_sending = Event()
+    release_first = Event()
+    second_ready = Event()
+    lock = Lock()
+    outcomes = {}
+    accepted = []
+
+    class ObservedLock:
+        def __enter__(self):
+            if current_thread().name == "gmail-second":
+                second_ready.set()
+            lock.acquire()
+
+        def __exit__(self, *args):
+            lock.release()
+
+    def attempt_send(campaign_id):
+        name = current_thread().name
+        try:
+            with app.app_context():
+                campaign = db.session.get(Campaign, campaign_id)
+                email_delivery.delivery_preview(campaign)
+                outcomes[name] = email_delivery.send_campaign(campaign)
+        except Exception as error:
+            outcomes[name] = error
+        finally:
+            if name == "gmail-second":
+                second_ready.set()
+
+    def accept_message(message, *, to_addrs):
+        accepted.append((message["To"], to_addrs))
+        if current_thread().name == "gmail-first":
+            first_sending.set()
+            assert release_first.wait(5), "First sender was not released"
+
+    first = Thread(target=attempt_send, args=(campaign_ids[0],), name="gmail-first")
+    second = Thread(
+        target=attempt_send,
+        args=(campaign_ids[0] if same_campaign else campaign_ids[1],),
+        name="gmail-second",
+    )
+    with patch("app.email_delivery.GMAIL_SEND_LOCK", ObservedLock(), create=True), patch(
+        "smtplib.SMTP"
+    ) as smtp_class:
+        smtp_class.return_value.__enter__.return_value.send_message.side_effect = accept_message
+        try:
+            first.start()
+            assert first_sending.wait(5), "First sender did not reach SMTP"
+            second.start()
+            assert second_ready.wait(5), "Second sender did not contend or finish"
+        finally:
+            release_first.set()
+            for thread in (first, second):
+                if thread.ident is not None:
+                    thread.join(5)
+        assert not first.is_alive() and not second.is_alive()
+
+    assert outcomes["gmail-first"] == 1
+    assert isinstance(outcomes["gmail-second"], ValueError)
+    smtp_class.assert_called_once_with("smtp.gmail.com", 587, timeout=10)
+    assert accepted == [("employee0@example.com", ["employee0@example.com"])]
+    with app.app_context():
+        successes = db.session.scalar(
+            db.select(db.func.count(TrackingEvent.event_id)).where(
+                TrackingEvent.event_type == "email_delivered",
+                TrackingEvent.delivery_channel == "gmail",
+            )
+        )
+        assert successes == prior_count + 1
+
+
+@pytest.mark.parametrize(
+    "change",
+    ["disabled_profile", "failed_test", "unapproved", "address_list", "removed_profile",
+     "new_unapproved", "pending_overflow", "delivery_disabled", "unsafe_url"],
+)
+def test_gmail_revalidates_current_state_after_acquiring_send_lock(
+    gmail_concurrency_app, change
+):
+    app, campaign_ids = gmail_concurrency_app
+
+    @contextmanager
+    def lock_after_state_change():
+        with app.app_context():
+            latest = db.session.get(Campaign, campaign_ids[0])
+            if change == "disabled_profile":
+                latest.sending_profile.enabled = False
+            elif change == "failed_test":
+                latest.sending_profile.last_test_succeeded = False
+            elif change == "unapproved":
+                latest.recipients[0].user.simulation_email_approved = False
+            elif change == "address_list":
+                latest.recipients[0].user.email = "approved@example.com, unapproved@example.com"
+            elif change == "removed_profile":
+                latest.sending_profile = None
+            elif change == "new_unapproved":
+                add_gmail_recipient(latest, 10, approved=False)
+            elif change == "pending_overflow":
+                for index in range(10, 20):
+                    add_gmail_recipient(latest, index)
+            elif change == "delivery_disabled":
+                app.config["MAIL_DELIVERY_ENABLED"] = False
+            else:
+                app.config["PUBLIC_BASE_URL"] = "http://training.example.com"
+            db.session.commit()
+        yield
+
+    with app.app_context():
+        campaign = db.session.get(Campaign, campaign_ids[0])
+        initial = email_delivery.delivery_preview(campaign)
+        assert initial["profile_ready"] is True
+        assert len(initial["allowed_recipients"]) == 1
+        with patch(
+            "app.email_delivery.GMAIL_SEND_LOCK", lock_after_state_change(), create=True
+        ), patch("smtplib.SMTP") as smtp_class:
+            with pytest.raises((ValueError, PermissionError)):
+                email_delivery.send_campaign(campaign)
+        smtp_class.assert_not_called()
+        assert db.session.query(TrackingEvent).count() == 0

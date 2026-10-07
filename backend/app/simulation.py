@@ -130,7 +130,7 @@ def send_campaign_email(campaign_id):
     if data.get("confirmation") != preview["confirmation_phrase"]:
         return jsonify(error="Type the exact confirmation phrase before sending"), 400
     try:
-        delivered = send_campaign(campaign)
+        delivered = send_campaign(campaign, confirmation=data.get("confirmation"))
     except PermissionError as error:
         return jsonify(error=str(error)), 403
     except ValueError as error:
