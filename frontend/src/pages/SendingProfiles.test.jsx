@@ -91,6 +91,24 @@ describe('Sending Profiles workspace', () => {
     expect(screen.getByLabelText('Google app password')).toHaveValue('')
   })
 
+  it('shows not tested when the saved profile has no test timestamp', async () => {
+    await openProfile()
+    expect(screen.getByText(/Last test:/)).toHaveTextContent('Last test: Not tested')
+    expect(document.querySelector('time')).not.toBeInTheDocument()
+  })
+
+  it.each([
+    [true, 'Succeeded'],
+    [false, 'Failed'],
+  ])('shows the persisted test result %s and saved timestamp on reopening', async (succeeded, result) => {
+    getSendingProfile.mockResolvedValue({ profile: { ...profile, last_test_succeeded: succeeded, last_tested_at: '2026-10-06T03:15:00+00:00' } })
+    await openProfile()
+    expect(screen.getByText(/Last test:/)).toHaveTextContent(`Last test: ${result}`)
+    expect(document.querySelector('time')).toHaveAttribute('datetime', '2026-10-06T03:15:00+00:00')
+    expect(document.querySelector('time')).toHaveTextContent('2026')
+    expect(document.querySelector('time')).not.toHaveTextContent('Invalid Date')
+  })
+
   it('saves metadata without including a typed replacement password', async () => {
     updateSendingProfile.mockResolvedValue({ profile: { ...profile, name: 'Updated name' } })
     await openProfile()
