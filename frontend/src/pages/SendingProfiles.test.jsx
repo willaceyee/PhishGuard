@@ -109,6 +109,19 @@ describe('Sending Profiles workspace', () => {
     expect(document.querySelector('time')).not.toHaveTextContent('Invalid Date')
   })
 
+  it.each([
+    ['offset-free UTC', '2026-10-06T03:15:00', '2026-10-06T03:15:00Z'],
+    ['UTC Z', '2026-10-06T03:15:00Z', '2026-10-06T03:15:00Z'],
+    ['positive offset', '2026-10-06T11:15:00+08:00', '2026-10-06T11:15:00+08:00'],
+    ['negative offset', '2026-10-05T20:15:00-07:00', '2026-10-05T20:15:00-07:00'],
+  ])('displays the correct UTC instant for a saved %s timestamp', async (_format, timestamp, expectedDateTime) => {
+    getSendingProfile.mockResolvedValue({ profile: { ...profile, last_test_succeeded: true, last_tested_at: timestamp } })
+    await openProfile()
+    const time = document.querySelector('time')
+    expect(time).toHaveTextContent(new Date('2026-10-06T03:15:00Z').toLocaleString())
+    expect(time).toHaveAttribute('datetime', expectedDateTime)
+  })
+
   it('saves metadata without including a typed replacement password', async () => {
     updateSendingProfile.mockResolvedValue({ profile: { ...profile, name: 'Updated name' } })
     await openProfile()
