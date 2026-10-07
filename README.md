@@ -57,10 +57,28 @@ Phase 7 quality assurance includes automated CI, backend coverage enforcement, s
 
 The React administrator workspace now exposes the simulation and detection features directly: manage users and templates, create campaigns, assign recipients, copy tracking links, and analyze URLs with SHAP explanations. See [the administrator workspace guide](docs/admin_workspace.md).
 
-Safe email delivery uses a localhost-only Mailpit inbox, explicit recipient
-allowlisting, campaign/rate limits, preview confirmation, visible simulation labels,
-and delivery event recording. It is disabled by default. See
+Safe email delivery is disabled by default and uses local Mailpit by default.
+An optional encrypted personal Gmail profile sends real email only to approved
+recipients, with HTTPS tracking, fixed Gmail limits, exact preview confirmation,
+visible simulation labels, and delivery event recording. See
 [the safe email delivery guide](docs/safe_email_delivery.md).
+
+For Gmail setup, generate a Fernet key locally from `backend`:
+
+```powershell
+.\venv\Scripts\python.exe -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+```
+
+Keep the output secret and set it as `SENDING_PROFILE_ENCRYPTION_KEY` in the
+backend environment. For an existing database, back it up and run
+`flask --app run.py upgrade-db` once, then restart Flask with the configured key,
+`MAIL_DELIVERY_ENABLED=1`, and a publicly reachable HTTPS `PUBLIC_BASE_URL`.
+On **Users**, create and approve a user matching the Gmail sender. On **Sending
+Profiles**, create the profile using a Google app password, select **Send test**
+(which sends real email to that approved sender only), and **Enable** it. Never
+enter the normal Google password. Choose Gmail explicitly when creating a
+campaign; Mailpit remains the default. Follow the guide's limits, confirmation,
+and credential-recovery instructions before sending.
 
 ### Train the development model
 
