@@ -124,6 +124,8 @@ td strong { color: #1b383c; }
 .delivery-summary dd { margin: .35rem 0 0; overflow-wrap: anywhere; color: #26474b; font-size: .82rem; font-weight: 700; }
 .delivery-warning { margin: .8rem 0; padding: .85rem 1rem; border-radius: 9px; color: #7b4814; background: #fff2d8; }
 .delivery-warning p { margin: .35rem 0 0; font-size: .82rem; line-height: 1.5; }
+.real-delivery-warning { border: 1px solid #e0b16a; }
+.delivery-method { color: #26474b; font-size: .9rem; font-weight: 800; }
 .delivery-review > label { display: block; margin: 1rem 0 .45rem; color: #385357; font-size: .8rem; }
 .delivery-review > input { width: 100%; padding: .78rem .85rem; border: 1px solid #cbd7d6; border-radius: 8px; color: #19363a; font: inherit; }
 .detection-form { margin-bottom: 1.25rem; }

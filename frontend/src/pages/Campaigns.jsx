@@ -4,6 +4,7 @@ import {
   createCampaign,
   deleteCampaign,
   getDeliveryPreview,
+  getSendingProfile,
   listCampaigns,
   listRecipients,
   listTemplates,
@@ -15,25 +16,27 @@ export default function Campaigns({ token, onDataChange }) {
   const [campaigns, setCampaigns] = useState([])
   const [users, setUsers] = useState([])
   const [templates, setTemplates] = useState([])
+  const [profile, setProfile] = useState(null)
   const [selectedCampaign, setSelectedCampaign] = useState(null)
   const [recipients, setRecipients] = useState([])
   const [selectedUsers, setSelectedUsers] = useState([])
   const [delivery, setDelivery] = useState(null)
   const [confirmation, setConfirmation] = useState('')
   const [sending, setSending] = useState(false)
-  const [form, setForm] = useState({ campaign_name: '', template_id: '', status: 'draft' })
+  const [form, setForm] = useState({ campaign_name: '', template_id: '', status: 'draft', sending_profile_id: '' })
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     let cancelled = false
-    Promise.all([listCampaigns(token), listUsers(token), listTemplates(token)])
-      .then(([campaignData, userData, templateData]) => {
+    Promise.all([listCampaigns(token), listUsers(token), listTemplates(token), getSendingProfile(token)])
+      .then(([campaignData, userData, templateData, profileData]) => {
         if (!cancelled) {
           setCampaigns(campaignData.campaigns)
           setUsers(userData.users)
           setTemplates(templateData.templates)
+          setProfile(profileData.profile)
         }
       })
       .catch((requestError) => { if (!cancelled) setError(requestError.message) })
@@ -49,9 +52,10 @@ export default function Campaigns({ token, onDataChange }) {
       const result = await createCampaign(token, {
         ...form,
         template_id: Number(form.template_id),
+        sending_profile_id: form.sending_profile_id ? Number(form.sending_profile_id) : null,
       })
       setCampaigns((current) => [result.campaign, ...current])
-      setForm({ campaign_name: '', template_id: '', status: 'draft' })
+      setForm({ campaign_name: '', template_id: '', status: 'draft', sending_profile_id: '' })
       onDataChange()
     } catch (requestError) {
       setError(requestError.message)
@@ -68,6 +72,7 @@ export default function Campaigns({ token, onDataChange }) {
     setSelectedCampaign(campaign)
     setSelectedUsers([])
     setDelivery(null)
+    setConfirmation('')
     setError('')
     setNotice('')
     try {
@@ -110,7 +115,7 @@ export default function Campaigns({ token, onDataChange }) {
   }
 
   const deliver = async () => {
-    if (!selectedCampaign || !delivery) return
+    if (!selectedCampaign || !canSend) return
     setSending(true)
     setError('')
     setNotice('')
@@ -120,7 +125,9 @@ export default function Campaigns({ token, onDataChange }) {
         selectedCampaign.campaign_id,
         confirmation,
       )
-      setNotice(`${result.delivered} authorized simulation emails delivered to the local Mailpit inbox.`)
+      setNotice(isGmail
+        ? `${result.delivered} authorized simulation emails delivered through Gmail.`
+        : `${result.delivered} authorized simulation emails delivered to the local Mailpit inbox.`)
       await refreshDelivery(selectedCampaign.campaign_id)
       onDataChange()
     } catch (requestError) {
@@ -152,12 +159,22 @@ export default function Campaigns({ token, onDataChange }) {
     setNotice('Tracking link copied. Share it only within an authorized awareness exercise.')
   }
 
+  const isGmail = delivery?.delivery_method === 'gmail'
+  const campaignLimitExceeded = delivery && (isGmail
+    ? delivery.allowed_recipients.length + delivery.blocked_recipients.length
+    : recipients.length) > delivery.campaign_recipient_limit
+  const hourlyLimitExceeded = delivery && delivery.hourly_delivered_count + delivery.allowed_recipients.length > delivery.hourly_delivery_limit
+  const canSend = delivery && !sending && Boolean(delivery.confirmation_phrase)
+    && confirmation === delivery.confirmation_phrase && delivery.blocked_recipients.length === 0
+    && delivery.delivery_enabled && delivery.public_url_safe && delivery.allowed_recipients.length > 0
+    && (!isGmail || delivery.profile_ready) && !campaignLimitExceeded && !hourlyLimitExceeded
+
   return <section className="workspace-page">
     <div className="page-heading">
       <div>
         <p className="eyebrow">Controlled simulation</p>
         <h1>Campaigns</h1>
-        <p>Create a campaign, assign allowlisted users, preview delivery, and send only to the local Mailpit test inbox.</p>
+        <p>Create a campaign, assign approved users, and preview delivery to local Mailpit or an enabled Gmail profile.</p>
       </div>
       <span className="count-pill">{campaigns.length} campaigns</span>
     </div>
@@ -173,6 +190,12 @@ export default function Campaigns({ token, onDataChange }) {
           <option value="">Choose a template</option>
           {templates.map((template) => <option key={template.template_id} value={template.template_id}>{template.template_name}</option>)}
         </select>
+        <label htmlFor="campaign-delivery">Delivery method</label>
+        <select id="campaign-delivery" value={form.sending_profile_id} onChange={(event) => setForm({ ...form, sending_profile_id: event.target.value })}>
+          <option value="">Mailpit — local test delivery</option>
+          {profile?.enabled && profile.credential_configured && <option value={profile.profile_id}>Gmail — {profile.name} ({profile.from_email})</option>}
+        </select>
+        {form.sending_profile_id && <div className="delivery-warning real-delivery-warning"><strong>Real email delivery</strong><p>Gmail sends real external email to approved recipients. Review the final safety checks before sending.</p></div>}
         <label htmlFor="campaign-status">Status</label>
         <select id="campaign-status" value={form.status} onChange={(event) => setForm({ ...form, status: event.target.value })}>
           <option value="draft">Draft</option>
@@ -207,13 +230,20 @@ export default function Campaigns({ token, onDataChange }) {
       </div>
       {delivery && <div className="delivery-review">
         <div className="panel-heading"><div><p className="eyebrow">Final safety check</p><h2>Email delivery preview</h2></div><span>{delivery.already_delivered} previously delivered</span></div>
+        <p className="delivery-method">{isGmail ? 'Gmail — real external delivery' : 'Mailpit — local test delivery'}</p>
+        {isGmail && <div className="delivery-warning real-delivery-warning"><strong>Real email delivery</strong><p>Gmail sends real external email to approved recipients. Confirm that recipients can reach your public HTTPS deployment before sending.</p></div>}
         <dl className="delivery-summary"><div><dt>From</dt><dd>{delivery.from}</dd></div><div><dt>Subject</dt><dd>{delivery.subject}</dd></div><div><dt>Allowlisted</dt><dd>{delivery.allowed_recipients.length}</dd></div><div><dt>Blocked</dt><dd>{delivery.blocked_recipients.length}</dd></div></dl>
+        {isGmail && <dl className="delivery-summary"><div><dt>Campaign limit</dt><dd>{delivery.campaign_recipient_limit} recipients</dd></div><div><dt>Hourly limit</dt><dd>{delivery.hourly_delivery_limit} emails</dd></div><div><dt>Sent in the past hour</dt><dd>{delivery.hourly_delivered_count}</dd></div><div><dt>Gmail profile</dt><dd>{delivery.profile_ready ? 'Ready' : 'Not ready'}</dd></div></dl>}
         {delivery.blocked_recipients.length > 0 && <div className="delivery-warning"><strong>Delivery blocked</strong><p>Approve these recipients for simulation email on the Users page: {delivery.blocked_recipients.map((user) => user.email).join(', ')}</p></div>}
-        {!delivery.delivery_enabled && <div className="delivery-warning"><strong>Delivery disabled</strong><p>Enable the local Mailpit configuration before sending.</p></div>}
-        {!delivery.public_url_safe && <div className="delivery-warning"><strong>Unsafe public URL</strong><p>Use HTTPS unless the tracking site is localhost.</p></div>}
+        {!delivery.delivery_enabled && <div className="delivery-warning"><strong>Delivery disabled</strong><p>{isGmail ? 'Enable email delivery in the server configuration before sending.' : 'Enable the local Mailpit configuration before sending.'}</p></div>}
+        {isGmail && !delivery.profile_ready && <div className="delivery-warning"><strong>Gmail profile not ready</strong><p>Enable the Gmail profile and complete a successful connection test on the Sending Profiles page.</p></div>}
+        {!delivery.public_url_safe && <div className="delivery-warning"><strong>Unsafe public URL</strong><p>{isGmail ? 'Use a public HTTPS URL, outside localhost, loopback, and private networks.' : 'Use HTTPS unless the tracking site is localhost.'}</p></div>}
+        {delivery.allowed_recipients.length === 0 && <div className="delivery-warning"><strong>No approved recipients remain</strong><p>Assign approved recipients who have not already received this campaign.</p></div>}
+        {campaignLimitExceeded && <div className="delivery-warning"><strong>Campaign limit exceeded</strong><p>Reduce the recipient count to {delivery.campaign_recipient_limit} or fewer before sending.</p></div>}
+        {hourlyLimitExceeded && <div className="delivery-warning"><strong>Hourly limit exceeded</strong><p>This send would exceed {delivery.hourly_delivery_limit} successful emails in the rolling hour. Wait for earlier deliveries to leave the window.</p></div>}
         <label htmlFor="send-confirmation">Type <strong>{delivery.confirmation_phrase}</strong> to confirm</label>
         <input id="send-confirmation" value={confirmation} onChange={(event) => setConfirmation(event.target.value)} autoComplete="off" />
-        <button className="primary-button" type="button" onClick={deliver} disabled={sending || confirmation !== delivery.confirmation_phrase || delivery.blocked_recipients.length > 0 || !delivery.delivery_enabled || !delivery.public_url_safe || delivery.allowed_recipients.length === 0}>{sending ? 'Sending…' : 'Send to local Mailpit'}</button>
+        <button className="primary-button" type="button" onClick={deliver} disabled={!canSend}>{sending ? 'Sending…' : isGmail ? 'Send real Gmail emails' : 'Send to local Mailpit'}</button>
       </div>}
     </section>}
   </section>

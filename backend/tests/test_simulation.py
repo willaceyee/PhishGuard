@@ -685,6 +685,43 @@ def test_gmail_hourly_limit_includes_the_requested_send(
         assert response.get_json()["delivered"] == 1
 
 
+@pytest.mark.parametrize("gmail,expected_count", [(True, 2), (False, 4)])
+def test_delivery_preview_reports_channel_scoped_rolling_hour_count(
+    client, auth_headers, gmail_campaign, gmail, expected_count
+):
+    now = utc_now()
+    prior_campaign = Campaign(
+        campaign_name="Earlier exercise", template=gmail_campaign.template,
+        admin=gmail_campaign.admin, sending_profile=gmail_campaign.sending_profile,
+    )
+    prior = add_gmail_recipient(prior_campaign, 99)
+    for event_type, channel, occurred_at in [
+        ("email_delivered", "gmail", now - timedelta(minutes=30)),
+        ("email_delivered", "gmail", now - timedelta(hours=1)),
+        ("email_delivered", "mailpit", now),
+        ("email_delivered", None, now),
+        ("email_failed", "gmail", now),
+        ("email_delivered", "gmail", now - timedelta(hours=1, seconds=1)),
+    ]:
+        db.session.add(TrackingEvent(
+            recipient=prior, event_type=event_type, delivery_channel=channel,
+            occurred_at=occurred_at,
+        ))
+    if not gmail:
+        gmail_campaign.sending_profile = None
+    db.session.commit()
+    with patch("app.email_delivery.utc_now", return_value=now), patch(
+        "smtplib.SMTP"
+    ) as smtp_class:
+        response = client.get(
+            f"/api/campaigns/{gmail_campaign.campaign_id}/delivery-preview",
+            headers=auth_headers,
+        )
+    assert response.status_code == 200
+    assert response.get_json()["preview"]["hourly_delivered_count"] == expected_count
+    smtp_class.assert_not_called()
+
+
 def test_gmail_hourly_count_ignores_other_channels_failures_and_older_successes(
     client, auth_headers, gmail_campaign
 ):

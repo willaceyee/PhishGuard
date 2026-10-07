@@ -115,6 +115,7 @@ def delivery_preview(campaign):
         "hourly_delivery_limit": current_app.config[
             "GMAIL_MAX_EMAILS_PER_HOUR" if gmail else "MAX_EMAILS_PER_HOUR"
         ],
+        "hourly_delivered_count": hourly_delivery_count("gmail" if gmail else None),
         "from": formataddr((profile.from_name, profile.from_email))
         if profile else current_app.config["MAIL_FROM"],
         "subject": f"{SIMULATION_PREFIX} {campaign.template.subject}",
