@@ -3,6 +3,8 @@ import smtplib
 import ssl
 from email.message import EmailMessage
 from email.utils import formataddr
+from functools import wraps
+from threading import Lock
 
 from cryptography.fernet import Fernet, InvalidToken
 from flask import Blueprint, current_app, jsonify, request
@@ -14,6 +16,17 @@ from app.models import Campaign, SendingProfile, User, utc_now
 
 
 sending_profiles = Blueprint("sending_profiles", __name__, url_prefix="/api/sending-profile")
+PROFILE_STATE_LOCK = Lock()
+
+
+def serialized_profile_change(operation):
+    @wraps(operation)
+    def serialized(*args, **kwargs):
+        with PROFILE_STATE_LOCK:
+            # Discard state loaded before another request finished its test.
+            db.session.rollback()
+            return operation(*args, **kwargs)
+    return serialized
 
 
 @sending_profiles.errorhandler(SQLAlchemyError)
@@ -82,6 +95,7 @@ def get_profile():
 
 @sending_profiles.post("")
 @jwt_required()
+@serialized_profile_change
 def create_profile():
     if db.session.scalar(db.select(SendingProfile)):
         return jsonify(error="sending_profile_exists"), 409
@@ -105,6 +119,7 @@ def create_profile():
 
 @sending_profiles.patch("")
 @jwt_required()
+@serialized_profile_change
 def update_profile():
     profile = db.session.scalar(db.select(SendingProfile))
     if profile is None:
@@ -132,6 +147,7 @@ def update_profile():
 
 @sending_profiles.delete("")
 @jwt_required()
+@serialized_profile_change
 def delete_profile():
     profile = db.session.scalar(db.select(SendingProfile))
     if profile is not None:
@@ -172,6 +188,7 @@ def test_gmail_profile(profile: SendingProfile) -> None:
 
 @sending_profiles.post("/test")
 @jwt_required()
+@serialized_profile_change
 def test_profile_connection():
     profile = db.session.scalar(db.select(SendingProfile))
     if profile is None:

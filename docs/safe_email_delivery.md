@@ -84,6 +84,11 @@ Mailpit is a development inbox. Do not configure its relay feature or expose por
 
 ## Configure personal Gmail delivery
 
+Run this version in one backend process. Do not deploy multiple Flask/Gunicorn
+workers or backend replicas: Gmail send limits and profile connection tests use
+process-local locks. Multiple processes require database-backed coordination
+before Gmail delivery can be enabled safely.
+
 1. Back up an existing database before upgrading it. From `backend`, generate a
    Fernet key locally:
 
@@ -155,6 +160,9 @@ manually retrying the remaining recipients. No automatic retry occurs.
 
 - Revoke a recipient's approval on **Users** to block future delivery to them.
 - Select **Disable** on **Sending Profiles** to block Gmail campaigns immediately.
+  During an active batch, committed disable or approval changes stop messages
+  that have not yet been dispatched to SMTP; an already dispatched message cannot
+  be recalled. The sender identity stays fixed for the authenticated batch.
   Deletion is rejected while any campaign references the profile, including
   completed campaigns. Use **Disable** to stop delivery without deleting campaign
   history; an unreferenced profile can be deleted.
