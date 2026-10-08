@@ -1,17 +1,33 @@
-from threading import Event, Lock, Thread, current_thread
+from contextlib import contextmanager
+from threading import Event, Thread, current_thread
 from unittest.mock import patch
 
 import pytest
 from flask_jwt_extended import create_access_token
 
 from app import create_app
+from app import email_delivery
+from app.delivery_coordination import DELIVERY_STATE
 from app.extensions import db
 from app.models import (
     Admin, Campaign, CampaignRecipient, EmailTemplate, SendingProfile, TrackingEvent,
     User, utc_now,
 )
-from app.sending_profiles import decrypt_app_password, encrypt_app_password, profile_updates
+from app.sending_profiles import decrypt_app_password, encrypt_app_password
 from config import TestConfig as BackendTestConfig
+
+
+@contextmanager
+def observe_queued_change(ready, thread_name="gate-mutation"):
+    original_wait = DELIVERY_STATE._condition.wait
+
+    def observe_wait(timeout=None):
+        if current_thread().name == thread_name:
+            ready.set()
+        return original_wait(timeout)
+
+    with patch.object(DELIVERY_STATE._condition, "wait", side_effect=observe_wait):
+        yield
 
 
 @pytest.fixture()
@@ -73,25 +89,10 @@ def test_overlapping_connection_test_and_patch_cannot_certify_replacement_creden
     release_test = Event()
     mutation_ready = Event()
     outcomes = {}
-    lock = Lock()
-
-    class ObservedLock:
-        def __enter__(self):
-            if current_thread().name == "profile-mutation":
-                mutation_ready.set()
-            lock.acquire()
-
-        def __exit__(self, *args):
-            lock.release()
 
     def pause_login(*args):
         testing.set()
         assert release_test.wait(5), "Connection test was not released"
-
-    def observe_mutation(data, **kwargs):
-        if current_thread().name == "profile-mutation":
-            mutation_ready.set()
-        return profile_updates(data, **kwargs)
 
     def test_connection():
         with app.test_client() as client:
@@ -108,9 +109,7 @@ def test_overlapping_connection_test_and_patch_cannot_certify_replacement_creden
 
     first = Thread(target=test_connection, name="profile-test")
     second = Thread(target=mutate_profile, name="profile-mutation")
-    with patch("app.sending_profiles.PROFILE_STATE_LOCK", ObservedLock(), create=True), patch(
-        "app.sending_profiles.profile_updates", side_effect=observe_mutation
-    ), patch("smtplib.SMTP") as smtp_class:
+    with observe_queued_change(mutation_ready, "profile-mutation"), patch("smtplib.SMTP") as smtp_class:
         smtp = smtp_class.return_value.__enter__.return_value
         smtp.login.side_effect = pause_login
         try:
@@ -149,6 +148,8 @@ def test_committed_gmail_gate_change_aborts_remaining_messages(concurrent_gmail,
     release = Event()
     outcomes = {}
     accepted = []
+    mutation_ready = Event()
+    mutation_finished = Event()
 
     def pause():
         reached.set()
@@ -166,15 +167,8 @@ def test_committed_gmail_gate_change_aborts_remaining_messages(concurrent_gmail,
                 json={"confirmation": "SEND 2 REAL EMAILS"},
             )
 
-    sender = Thread(target=send)
-    with patch("smtplib.SMTP") as smtp_class:
-        smtp = smtp_class.return_value.__enter__.return_value
-        if stage == "login":
-            smtp.login.side_effect = lambda *args: pause()
-        smtp.send_message.side_effect = accept
+    def mutate():
         try:
-            sender.start()
-            assert reached.wait(5), "Sender did not reach the paused stage"
             with app.test_client() as client:
                 if change in {"revoked", "revoked_later"}:
                     target = recipient_ids[0 if stage == "login" and change == "revoked" else 1]
@@ -195,13 +189,35 @@ def test_committed_gmail_gate_change_aborts_remaining_messages(concurrent_gmail,
                                "sender": {"from_email": "replacement@gmail.com"},
                                "password": {"app_password": "qrst uvwx yzab cdef"}}[change]
                     mutation = client.patch("/api/sending-profile", headers=headers, json=updates)
-                assert mutation.status_code == (503 if change == "failed_test" else 200)
+                outcomes["mutation"] = mutation
+        finally:
+            mutation_finished.set()
+            mutation_ready.set()
+
+    sender = Thread(target=send)
+    mutation = Thread(target=mutate, name="gate-mutation")
+    with observe_queued_change(mutation_ready), patch("smtplib.SMTP") as smtp_class:
+        smtp = smtp_class.return_value.__enter__.return_value
+        if stage == "login":
+            smtp.login.side_effect = lambda *args: pause()
+        smtp.send_message.side_effect = accept
+        try:
+            sender.start()
+            assert reached.wait(5), "Sender did not reach the paused stage"
+            mutation.start()
+            if stage == "login":
+                assert mutation_finished.wait(5), "Mutation did not commit during setup"
+            else:
+                assert mutation_ready.wait(5), "Mutation did not queue"
+                assert not mutation_finished.is_set()
         finally:
             release.set()
-            if sender.ident is not None:
-                sender.join(5)
-        assert not sender.is_alive()
+            for thread in (sender, mutation):
+                if thread.ident is not None:
+                    thread.join(5)
+        assert not sender.is_alive() and not mutation.is_alive()
 
+    assert outcomes["mutation"].status_code == (503 if change == "failed_test" else 200)
     assert outcomes["send"].status_code == (
         403 if change in {"revoked", "revoked_later"} else 400
     )
@@ -220,6 +236,8 @@ def test_gmail_batch_keeps_authenticated_sender_snapshot_after_session_expiratio
     release = Event()
     messages = []
     outcomes = {}
+    mutation_ready = Event()
+    mutation_finished = Event()
 
     def accept(message, **kwargs):
         messages.append((str(message["From"]), kwargs))
@@ -234,25 +252,114 @@ def test_gmail_batch_keeps_authenticated_sender_snapshot_after_session_expiratio
                 json={"confirmation": "SEND 2 REAL EMAILS"},
             )
 
+    def mutate():
+        with app.test_client() as client:
+            outcomes["mutation"] = client.patch(
+                "/api/sending-profile", headers=headers, json={"from_name": "Changed display"},
+            )
+        mutation_finished.set()
+        mutation_ready.set()
+
     sender = Thread(target=send)
-    with patch("smtplib.SMTP") as smtp_class:
+    mutation = Thread(target=mutate, name="gate-mutation")
+    with observe_queued_change(mutation_ready), patch("smtplib.SMTP") as smtp_class:
         smtp = smtp_class.return_value.__enter__.return_value
         smtp.send_message.side_effect = accept
         try:
             sender.start()
             assert reached.wait(5), "Sender did not reach SMTP"
-            with app.test_client() as client:
-                response = client.patch(
-                    "/api/sending-profile", headers=headers, json={"from_name": "Changed display"},
-                )
-                assert response.status_code == 200
+            mutation.start()
+            assert mutation_ready.wait(5), "Metadata mutation did not queue"
+            assert not mutation_finished.is_set()
         finally:
             release.set()
-            sender.join(5)
-        assert not sender.is_alive()
+            for thread in (sender, mutation):
+                if thread.ident is not None:
+                    thread.join(5)
+        assert not sender.is_alive() and not mutation.is_alive()
 
+    assert outcomes["mutation"].status_code == 200
     assert outcomes["send"].status_code == 200
     smtp.login.assert_called_once_with("simulation@gmail.com", "abcdefghijklmnop")
     assert [message[0] for message in messages] == [
         "Simulation Admin <simulation@gmail.com>", "Simulation Admin <simulation@gmail.com>"
     ]
+
+
+@pytest.mark.parametrize("change", ["disabled", "revoked"])
+def test_gmail_final_gate_through_dispatch_is_atomic_with_mutations(concurrent_gmail, change):
+    app, headers, campaign_id, recipient_ids = concurrent_gmail
+    with app.app_context():
+        campaign = db.session.get(Campaign, campaign_id)
+        db.session.add(CampaignRecipient(
+            campaign=campaign,
+            user=User(name="Third employee", email="employee2@example.com",
+                      simulation_email_approved=True),
+            tracking_token="concurrent-token-2",
+        ))
+        db.session.commit()
+    building_second = Event()
+    release_build = Event()
+    mutation_ready = Event()
+    mutation_finished = Event()
+    outcomes = {}
+    dispatched_after_mutation = []
+    built = 0
+    original_message_for = email_delivery.message_for
+
+    def pause_second_message(*args, **kwargs):
+        nonlocal built
+        message = original_message_for(*args, **kwargs)
+        built += 1
+        if built == 2:
+            building_second.set()
+            assert release_build.wait(5), "Second message construction was not released"
+        return message
+
+    def send():
+        with app.test_client() as client:
+            outcomes["send"] = client.post(
+                f"/api/campaigns/{campaign_id}/send", headers=headers,
+                json={"confirmation": "SEND 3 REAL EMAILS"},
+            )
+
+    def mutate():
+        with app.test_client() as client:
+            if change == "disabled":
+                outcomes["mutation"] = client.patch(
+                    "/api/sending-profile", headers=headers, json={"enabled": False},
+                )
+            else:
+                outcomes["mutation"] = client.patch(
+                    f"/api/users/{recipient_ids[1]}", headers=headers,
+                    json={"simulation_email_approved": False},
+                )
+        mutation_finished.set()
+        mutation_ready.set()
+
+    sender = Thread(target=send, name="gate-sender")
+    mutation = Thread(target=mutate, name="gate-mutation")
+    with observe_queued_change(mutation_ready), patch("app.email_delivery.message_for", side_effect=pause_second_message), patch(
+        "smtplib.SMTP"
+    ) as smtp_class:
+        smtp_class.return_value.__enter__.return_value.send_message.side_effect = (
+            lambda *args, **kwargs: dispatched_after_mutation.append(mutation_finished.is_set())
+        )
+        try:
+            sender.start()
+            assert building_second.wait(5), "Sender did not reach the final-check/dispatch gap"
+            mutation.start()
+            assert mutation_ready.wait(5), "Mutation did not queue or finish"
+            assert not mutation_finished.is_set(), "Mutation committed before authorized dispatch finished"
+        finally:
+            release_build.set()
+            for thread in (sender, mutation):
+                if thread.ident is not None:
+                    thread.join(5)
+        assert not sender.is_alive() and not mutation.is_alive()
+
+    assert outcomes["mutation"].status_code == 200
+    assert outcomes["send"].status_code == (400 if change == "disabled" else 403)
+    assert dispatched_after_mutation == [False, False]
+    with app.app_context():
+        assert db.session.scalar(db.select(db.func.count(TrackingEvent.event_id))) == 2

@@ -4,6 +4,7 @@ from flask import Blueprint, abort, jsonify, request
 from flask_jwt_extended import get_jwt_identity, jwt_required
 
 from app.extensions import db
+from app.delivery_coordination import serialized_delivery_state_change
 from app.models import Campaign, CampaignRecipient, EmailTemplate, SendingProfile, User
 
 
@@ -71,6 +72,7 @@ def create_user():
 
 @api.patch("/users/<int:user_id>")
 @jwt_required()
+@serialized_delivery_state_change
 def update_user(user_id):
     user = db.get_or_404(User, user_id)
     data = payload()
@@ -100,6 +102,7 @@ def update_user(user_id):
 
 @api.delete("/users/<int:user_id>")
 @jwt_required()
+@serialized_delivery_state_change
 def delete_user(user_id):
     user = db.get_or_404(User, user_id)
     if db.session.scalar(
@@ -214,6 +217,7 @@ def create_campaign():
 
 @api.patch("/campaigns/<int:campaign_id>")
 @jwt_required()
+@serialized_delivery_state_change
 def update_campaign(campaign_id):
     campaign = db.get_or_404(Campaign, campaign_id)
     data = payload()

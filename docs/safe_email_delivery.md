@@ -160,6 +160,8 @@ manually retrying the remaining recipients. No automatic retry occurs.
 
 - Revoke a recipient's approval on **Users** to block future delivery to them.
 - Select **Disable** on **Sending Profiles** to block Gmail campaigns immediately.
+  A change requested during message construction or SMTP dispatch waits for that
+  in-flight message to finish. Queued changes apply before another message starts.
   During an active batch, committed disable or approval changes stop messages
   that have not yet been dispatched to SMTP; an already dispatched message cannot
   be recalled. The sender identity stays fixed for the authenticated batch.

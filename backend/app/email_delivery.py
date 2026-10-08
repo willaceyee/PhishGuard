@@ -2,6 +2,7 @@ import ipaddress
 import re
 import smtplib
 import ssl
+from contextlib import nullcontext
 from datetime import timedelta
 from email.errors import HeaderParseError
 from email.headerregistry import Address
@@ -14,6 +15,7 @@ from cryptography.fernet import InvalidToken
 from flask import current_app
 
 from app.extensions import db
+from app.delivery_coordination import DELIVERY_STATE
 from app.models import CampaignRecipient, SendingProfile, TrackingEvent, utc_now
 from app.sending_profiles import decrypt_app_password
 
@@ -251,40 +253,42 @@ def _send_campaign(campaign, confirmation=None):
                     )
                 except (RuntimeError, ValueError, InvalidToken) as error:
                     raise ConnectionError("Gmail credentials are unavailable") from error
-            for index, recipient in enumerate(pending):
+            for recipient in pending:
                 if gmail:
                     db.session.rollback()
-                    profile = db.session.get(SendingProfile, profile_id)
-                    if (
-                        campaign.sending_profile_id != profile_id or profile is None
-                        or not profile.enabled or not profile.last_test_succeeded
-                        or profile.from_email != sender_email
-                        or profile.encrypted_app_password != encrypted_password
-                    ):
-                        raise ValueError(
-                            "Gmail sending profile changed; review the delivery preview again"
-                        )
-                    if any(not item.user.simulation_email_approved for item in pending[index:]):
-                        raise DeliveryApprovalChanged(
-                            "Gmail recipient approval changed; review the delivery preview again"
-                        )
-                address = addresses[recipient.recipient_id] if gmail else None
-                message = message_for(
-                    campaign, recipient, to_address=address,
-                    from_address=sender_header if gmail else None,
-                )
-                if gmail:
-                    smtp.send_message(message, to_addrs=[address])
-                else:
-                    smtp.send_message(message)
-                db.session.add(
-                    TrackingEvent(
-                        recipient=recipient, event_type="email_delivered",
-                        delivery_channel=channel,
+                with DELIVERY_STATE.dispatch() if gmail else nullcontext():
+                    if gmail:
+                        profile = db.session.get(SendingProfile, profile_id)
+                        if (
+                            campaign.sending_profile_id != profile_id or profile is None
+                            or not profile.enabled or not profile.last_test_succeeded
+                            or profile.from_email != sender_email
+                            or profile.encrypted_app_password != encrypted_password
+                        ):
+                            raise ValueError(
+                                "Gmail sending profile changed; review the delivery preview again"
+                            )
+                        if any(not item.user.simulation_email_approved for item in pending):
+                            raise DeliveryApprovalChanged(
+                                "Gmail recipient approval changed; review the delivery preview again"
+                            )
+                    address = addresses[recipient.recipient_id] if gmail else None
+                    message = message_for(
+                        campaign, recipient, to_address=address,
+                        from_address=sender_header if gmail else None,
                     )
-                )
-                db.session.commit()
-                delivered += 1
+                    if gmail:
+                        smtp.send_message(message, to_addrs=[address])
+                    else:
+                        smtp.send_message(message)
+                    db.session.add(
+                        TrackingEvent(
+                            recipient=recipient, event_type="email_delivered",
+                            delivery_channel=channel,
+                        )
+                    )
+                    db.session.commit()
+                    delivered += 1
     except DeliveryApprovalChanged:
         raise
     except (OSError, smtplib.SMTPException) as error:
