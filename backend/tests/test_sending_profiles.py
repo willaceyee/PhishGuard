@@ -97,6 +97,26 @@ def test_create_profile_normalizes_and_hides_credentials(
     assert profile.encrypted_app_password not in caplog.text
 
 
+@pytest.mark.parametrize("method", ["post", "patch"])
+def test_profile_rejects_line_breaks_in_sender_display_name(
+    client, auth_headers, profile_payload, stored_profile, method
+):
+    if method == "post":
+        db.session.delete(stored_profile)
+        db.session.commit()
+        payload = {**profile_payload, "from_name": "Security\nInjected"}
+    else:
+        payload = {"from_name": "Security\r\nInjected"}
+    response = getattr(client, method)(
+        "/api/sending-profile", json=payload, headers=auth_headers
+    )
+    assert response.status_code == 400
+    assert response.get_json() == {"error": "invalid_profile"}
+    if method == "patch":
+        db.session.expire_all()
+        assert stored_profile.from_name == "Simulation Admin"
+
+
 def test_second_profile_returns_conflict(
     client, auth_headers, profile_payload, stored_profile
 ):
@@ -366,15 +386,32 @@ def approved_sender(app):
     return user
 
 
+@pytest.fixture()
+def test_template(app):
+    template = EmailTemplate(
+        template_name="Connection test",
+        subject="Connection test",
+        body="Connection test body",
+    )
+    db.session.add(template)
+    db.session.commit()
+    return template
+
+
 def test_gmail_connection_uses_tls_and_sends_only_to_approved_sender(
     client, auth_headers, stored_profile, approved_sender, caplog
 ):
+    template = EmailTemplate(
+        template_name="Document review",
+        subject="Review the updated document",
+        body="Open [INSERT CAMPAIGN TRACKING LINK] to continue.",
+    )
     recipient = User(
         name="Test Recipient",
         email="recipient@example.com",
         simulation_email_approved=True,
     )
-    db.session.add(recipient)
+    db.session.add_all([recipient, template])
     db.session.commit()
     with patch("smtplib.SMTP") as smtp_class, patch(
         "ssl.create_default_context", wraps=ssl.create_default_context
@@ -382,7 +419,10 @@ def test_gmail_connection_uses_tls_and_sends_only_to_approved_sender(
         smtp = smtp_class.return_value.__enter__.return_value
         response = client.post(
             "/api/sending-profile/test",
-            json={"recipient_user_id": recipient.user_id},
+            json={
+                "recipient_user_id": recipient.user_id,
+                "template_id": template.template_id,
+            },
             headers=auth_headers,
         )
     assert response.status_code == 200
@@ -403,8 +443,10 @@ def test_gmail_connection_uses_tls_and_sends_only_to_approved_sender(
     assert "security simulation" in message["Subject"].lower()
     assert message["Subject"].startswith("[SECURITY SIMULATION]")
     assert message["X-PhishGuard-Simulation"] == "authorized-training"
-    assert "test" in message["Subject"].lower()
-    assert "security simulation" in message.get_content().lower()
+    assert message["Subject"] == "[SECURITY SIMULATION] Review the updated document"
+    assert "Open http://localhost/phishguard-test-preview to continue." in message.get_content()
+    assert "[INSERT CAMPAIGN TRACKING LINK]" not in message.get_content()
+    assert db.session.query(TrackingEvent).count() == 0
     assert "abcdefghijklmnop" not in message.as_string()
     db.session.expire_all()
     assert stored_profile.last_tested_at is not None
@@ -413,6 +455,53 @@ def test_gmail_connection_uses_tls_and_sends_only_to_approved_sender(
     assert_safe_response(response, stored_profile)
     assert "abcdefghijklmnop" not in caplog.text
     assert stored_profile.encrypted_app_password not in caplog.text
+
+
+@pytest.mark.parametrize("template_id", [None, "1", 9999])
+def test_connection_requires_an_existing_template_before_decryption(
+    client, auth_headers, stored_profile, approved_sender, template_id
+):
+    payload = {
+        "recipient_user_id": approved_sender.user_id,
+        "template_id": template_id,
+    }
+    with patch("app.sending_profiles.decrypt_app_password") as decrypt, patch(
+        "smtplib.SMTP"
+    ) as smtp_class:
+        response = client.post(
+            "/api/sending-profile/test", json=payload, headers=auth_headers
+        )
+    assert response.status_code == 400
+    assert response.get_json() == {"error": "gmail_test_template_not_found"}
+    decrypt.assert_not_called()
+    smtp_class.assert_not_called()
+
+
+def test_connection_rejects_an_unsafe_template_subject_before_decryption(
+    client, auth_headers, stored_profile, approved_sender
+):
+    template = EmailTemplate(
+        template_name="Unsafe subject",
+        subject="First line\nInjected header",
+        body="Test body",
+    )
+    db.session.add(template)
+    db.session.commit()
+    with patch("app.sending_profiles.decrypt_app_password") as decrypt, patch(
+        "smtplib.SMTP"
+    ) as smtp_class:
+        response = client.post(
+            "/api/sending-profile/test",
+            json={
+                "recipient_user_id": approved_sender.user_id,
+                "template_id": template.template_id,
+            },
+            headers=auth_headers,
+        )
+    assert response.status_code == 400
+    assert response.get_json() == {"error": "gmail_test_template_invalid"}
+    decrypt.assert_not_called()
+    smtp_class.assert_not_called()
 
 
 @pytest.mark.parametrize("payload", [None, {}, {"recipient_user_id": "1"}, {"recipient_user_id": 9999}])
@@ -498,7 +587,8 @@ def test_connection_requires_exact_approved_user_before_decryption(
 )
 @pytest.mark.parametrize("stage", ["connect", "starttls", "login", "send_message"])
 def test_connection_errors_are_safe_and_persist_failed_state(
-    client, auth_headers, stored_profile, approved_sender, error, code, stage, caplog
+    client, auth_headers, stored_profile, approved_sender, test_template,
+    error, code, stage, caplog
 ):
     previous_test = utc_now()
     stored_profile.last_tested_at = previous_test
@@ -512,7 +602,10 @@ def test_connection_errors_are_safe_and_persist_failed_state(
             getattr(smtp, stage).side_effect = error
         response = client.post(
             "/api/sending-profile/test",
-            json={"recipient_user_id": approved_sender.user_id},
+            json={
+                "recipient_user_id": approved_sender.user_id,
+                "template_id": test_template.template_id,
+            },
             headers=auth_headers,
         )
     assert response.status_code == 502
@@ -527,7 +620,8 @@ def test_connection_errors_are_safe_and_persist_failed_state(
 
 @pytest.mark.parametrize("failure", ["missing_key", "invalid_ciphertext", "missing_password"])
 def test_unusable_credentials_fail_safely_and_persist_state(
-    app, client, auth_headers, stored_profile, approved_sender, failure, caplog
+    app, client, auth_headers, stored_profile, approved_sender, test_template,
+    failure, caplog
 ):
     if failure == "missing_key":
         app.config["SENDING_PROFILE_ENCRYPTION_KEY"] = ""
@@ -540,7 +634,10 @@ def test_unusable_credentials_fail_safely_and_persist_state(
     with patch("smtplib.SMTP") as smtp_class:
         response = client.post(
             "/api/sending-profile/test",
-            json={"recipient_user_id": approved_sender.user_id},
+            json={
+                "recipient_user_id": approved_sender.user_id,
+                "template_id": test_template.template_id,
+            },
             headers=auth_headers,
         )
     assert response.status_code == 503
@@ -618,7 +715,7 @@ def test_metadata_limits_apply_after_trimming(
      ("delete", "/api/sending-profile"), ("post", "/api/sending-profile/test")],
 )
 def test_persistence_errors_do_not_expose_credential_bind_parameters(
-    app, client, auth_headers, profile_payload, stored_profile, approved_sender,
+    app, client, auth_headers, profile_payload, stored_profile, approved_sender, test_template,
     error_class, method, path, caplog,
 ):
     app.config["PROPAGATE_EXCEPTIONS"] = False
@@ -639,7 +736,10 @@ def test_persistence_errors_do_not_expose_credential_bind_parameters(
         )
 
     request_payload = (
-        {"recipient_user_id": approved_sender.user_id}
+        {
+            "recipient_user_id": approved_sender.user_id,
+            "template_id": test_template.template_id,
+        }
         if path == "/api/sending-profile/test"
         else profile_payload
     )

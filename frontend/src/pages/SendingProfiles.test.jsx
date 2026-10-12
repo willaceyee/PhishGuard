@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import SendingProfiles from './SendingProfiles.jsx'
 import Dashboard from './Dashboard.jsx'
-import { createSendingProfile, deleteSendingProfile, getSendingProfile, listUsers, testSendingProfile, updateSendingProfile } from '../services/api.js'
+import { createSendingProfile, deleteSendingProfile, getSendingProfile, listTemplates, listUsers, testSendingProfile, updateSendingProfile } from '../services/api.js'
 
 vi.mock('../services/api.js', () => ({
   getSendingProfile: vi.fn(),
@@ -10,6 +10,7 @@ vi.mock('../services/api.js', () => ({
   updateSendingProfile: vi.fn(),
   testSendingProfile: vi.fn(),
   deleteSendingProfile: vi.fn(),
+  listTemplates: vi.fn(),
   listUsers: vi.fn(),
 }))
 
@@ -24,11 +25,16 @@ const approvedUsers = [
   { user_id: 7, name: 'Approved User', email: 'approved@example.com', simulation_email_approved: true },
   { user_id: 8, name: 'Not Approved', email: 'blocked@example.com', simulation_email_approved: false },
 ]
+const templates = [
+  { template_id: 11, template_name: 'Document review', subject: 'Review the document', body: 'Open [INSERT CAMPAIGN TRACKING LINK]' },
+  { template_id: 12, template_name: 'Password reset', subject: 'Reset your password', body: 'Reset instructions' },
+]
 
 beforeEach(() => {
   vi.resetAllMocks()
   getSendingProfile.mockResolvedValue({ profile })
   listUsers.mockResolvedValue({ users: approvedUsers })
+  listTemplates.mockResolvedValue({ templates })
 })
 
 afterEach(() => {
@@ -44,6 +50,10 @@ async function openProfile() {
 
 function selectTestRecipient() {
   fireEvent.change(screen.getByLabelText('Test send to'), { target: { value: '7' } })
+}
+
+function selectTestTemplate() {
+  fireEvent.change(screen.getByLabelText('Test email template'), { target: { value: '11' } })
 }
 
 function enterMetadata() {
@@ -164,16 +174,23 @@ describe('Sending Profiles workspace', () => {
     expect(screen.getByRole('option', { name: 'Approved User — approved@example.com' })).toBeInTheDocument()
     expect(screen.queryByRole('option', { name: /Not Approved/ })).not.toBeInTheDocument()
     fireEvent.change(screen.getByLabelText('Test send to'), { target: { value: '7' } })
+    selectTestTemplate()
     fireEvent.click(screen.getByRole('button', { name: 'Send test' }))
     expect(await screen.findByRole('status')).toHaveTextContent('Test email sent to approved@example.com.')
-    expect(testSendingProfile).toHaveBeenCalledWith('admin-token', 7)
+    expect(testSendingProfile).toHaveBeenCalledWith('admin-token', 7, 11)
   })
 
-  it('requires an approved test recipient before enabling Send test', async () => {
+  it('requires an approved test recipient and template before enabling Send test', async () => {
     await openProfile()
     expect(listUsers).toHaveBeenCalledWith('admin-token')
+    expect(listTemplates).toHaveBeenCalledWith('admin-token')
     expect(screen.getByLabelText('Test send to')).toHaveValue('')
+    expect(screen.getByLabelText('Test email template')).toHaveValue('')
     expect(screen.getByRole('button', { name: 'Send test' })).toBeDisabled()
+    selectTestRecipient()
+    expect(screen.getByRole('button', { name: 'Send test' })).toBeDisabled()
+    selectTestTemplate()
+    expect(screen.getByRole('button', { name: 'Send test' })).toBeEnabled()
   })
 
   it('keeps profile controls available when approved recipients cannot be loaded', async () => {
@@ -186,13 +203,33 @@ describe('Sending Profiles workspace', () => {
     expect(screen.getByRole('button', { name: 'Send test' })).toBeDisabled()
   })
 
+  it('keeps profile controls available when templates cannot be loaded', async () => {
+    listTemplates.mockRejectedValue(new Error('network failed'))
+    await openProfile()
+    expect(screen.getByRole('alert')).toHaveTextContent('Unable to load test email templates. Other profile controls are still available.')
+    expect(screen.getByRole('button', { name: 'Save metadata' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: 'Enable' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: 'Delete' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: 'Send test' })).toBeDisabled()
+  })
+
   it('displays a safe provider failure in the dashboard error style', async () => {
     testSendingProfile.mockRejectedValue(new Error('gmail_authentication_failed'))
     await openProfile()
     selectTestRecipient()
+    selectTestTemplate()
     fireEvent.click(screen.getByRole('button', { name: 'Send test' }))
     expect(await screen.findByRole('alert')).toHaveTextContent('Gmail authentication failed. Check the Google app password.')
     expect(screen.getByRole('alert')).toHaveClass('dashboard-error')
+  })
+
+  it('explains when the selected template has an invalid email subject', async () => {
+    testSendingProfile.mockRejectedValue(new Error('gmail_test_template_invalid'))
+    await openProfile()
+    selectTestRecipient()
+    selectTestTemplate()
+    fireEvent.click(screen.getByRole('button', { name: 'Send test' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('The selected template has an invalid email subject.')
   })
 
   it('refreshes a failed test result instead of retaining the previous successful test', async () => {
@@ -202,6 +239,7 @@ describe('Sending Profiles workspace', () => {
     await openProfile()
     expect(screen.getByText(/Last test:/)).toHaveTextContent('Last test: Succeeded')
     selectTestRecipient()
+    selectTestTemplate()
     fireEvent.click(screen.getByRole('button', { name: 'Send test' }))
     await screen.findByRole('alert')
     expect(await screen.findByText(/Last test: Failed/)).toBeInTheDocument()
@@ -217,6 +255,7 @@ describe('Sending Profiles workspace', () => {
     await openProfile()
     expect(screen.getByText(/Last test:/)).toHaveTextContent('Last test: Succeeded')
     selectTestRecipient()
+    selectTestTemplate()
     fireEvent.click(screen.getByRole('button', { name: 'Send test' }))
     expect(await screen.findByText('Last test: Unavailable')).toBeInTheDocument()
     expect(screen.getByText(/Last test:/)).not.toHaveTextContent('Succeeded')
@@ -236,6 +275,7 @@ describe('Sending Profiles workspace', () => {
     testSendingProfile.mockRejectedValue({ message: `SMTP raw credentials ${password}`, response: { secret: 'stored-ciphertext' } })
     await openProfile()
     selectTestRecipient()
+    selectTestTemplate()
     fireEvent.click(screen.getByRole('button', { name: 'Send test' }))
     expect(await screen.findByRole('alert')).toHaveTextContent('Unable to complete the sending profile request. Please try again.')
     expect(document.body.innerHTML).not.toContain(password)
@@ -280,7 +320,10 @@ describe('Sending Profiles workspace', () => {
     api.mockImplementation(() => new Promise((done) => { resolve = done }))
     await openProfile()
     fireEvent.change(screen.getByLabelText('Google app password'), { target: { value: password } })
-    if (button === 'Send test') selectTestRecipient()
+    if (button === 'Send test') {
+      selectTestRecipient()
+      selectTestTemplate()
+    }
     fireEvent.click(screen.getByRole('button', { name: button }))
     const pendingButton = screen.getByRole('button', { name: pending })
     expect(pendingButton).toBeDisabled()
@@ -328,14 +371,14 @@ describe('sending profile API routes', () => {
     await api.getSendingProfile('admin-token')
     await api.createSendingProfile('admin-token', { name: 'Name', app_password: password })
     await api.updateSendingProfile('admin-token', { enabled: true })
-    await api.testSendingProfile('admin-token', 7)
+    await api.testSendingProfile('admin-token', 7, 11)
     fetch.mockResolvedValueOnce({ ok: true, status: 204 })
     await api.deleteSendingProfile('admin-token')
     expect(fetch.mock.calls).toEqual([
       ['/api/sending-profile', { headers: { Authorization: 'Bearer admin-token' } }],
       ['/api/sending-profile', { method: 'POST', body: JSON.stringify({ name: 'Name', app_password: password }), headers: { Authorization: 'Bearer admin-token', 'Content-Type': 'application/json' } }],
       ['/api/sending-profile', { method: 'PATCH', body: '{"enabled":true}', headers: { Authorization: 'Bearer admin-token', 'Content-Type': 'application/json' } }],
-      ['/api/sending-profile/test', { method: 'POST', body: '{"recipient_user_id":7}', headers: { Authorization: 'Bearer admin-token', 'Content-Type': 'application/json' } }],
+      ['/api/sending-profile/test', { method: 'POST', body: '{"recipient_user_id":7,"template_id":11}', headers: { Authorization: 'Bearer admin-token', 'Content-Type': 'application/json' } }],
       ['/api/sending-profile', { method: 'DELETE', headers: { Authorization: 'Bearer admin-token' } }],
     ])
   })

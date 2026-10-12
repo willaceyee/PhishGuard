@@ -11,10 +11,13 @@ from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
 from app.extensions import db
 from app.delivery_coordination import serialized_delivery_state_change
-from app.models import Campaign, SendingProfile, User, utc_now
+from app.models import Campaign, EmailTemplate, SendingProfile, User, utc_now
 
 
 sending_profiles = Blueprint("sending_profiles", __name__, url_prefix="/api/sending-profile")
+SIMULATION_PREFIX = "[SECURITY SIMULATION]"
+LINK_PLACEHOLDER = "[INSERT CAMPAIGN TRACKING LINK]"
+TEST_PREVIEW_URL = "http://localhost/phishguard-test-preview"
 
 
 @sending_profiles.errorhandler(SQLAlchemyError)
@@ -54,6 +57,8 @@ def profile_updates(data, creating=False):
         if not isinstance(value, str) or not value.strip():
             raise ValueError("invalid_profile")
         value = value.strip()
+        if field == "from_name" and ("\r" in value or "\n" in value):
+            raise ValueError("invalid_profile")
         if (field == "name" and len(value) > 160) or (
             field == "from_name" and len(value) > 120
         ):
@@ -154,19 +159,15 @@ def delete_profile():
     return "", 204
 
 
-def test_gmail_profile(profile: SendingProfile, recipient_email: str) -> None:
-    if not profile.encrypted_app_password:
-        raise RuntimeError("Gmail credentials are unavailable")
-    password = decrypt_app_password(profile.encrypted_app_password)
+def test_gmail_profile(
+    profile: SendingProfile, recipient_email: str, template: EmailTemplate, password: str
+) -> None:
     message = EmailMessage()
-    message["Subject"] = "[SECURITY SIMULATION] PhishGuard connection test"
+    message["Subject"] = f"{SIMULATION_PREFIX} {template.subject}"
     message["From"] = formataddr((profile.from_name, profile.from_email))
     message["To"] = recipient_email
     message["X-PhishGuard-Simulation"] = "authorized-training"
-    message.set_content(
-        "This is a PhishGuard security simulation connection test sent to an "
-        "approved recipient. No action is required."
-    )
+    message.set_content(template.body.replace(LINK_PLACEHOLDER, TEST_PREVIEW_URL))
     context = ssl.create_default_context()
     with smtplib.SMTP("smtp.gmail.com", 587, timeout=10) as smtp:
         smtp.starttls(context=context)
@@ -206,20 +207,42 @@ def test_profile_connection():
     if recipient is None:
         db.session.commit()
         return jsonify(error="gmail_test_recipient_not_approved"), 403
+    template_id = data.get("template_id")
+    if isinstance(template_id, bool) or not isinstance(template_id, int):
+        db.session.commit()
+        return jsonify(error="gmail_test_template_not_found"), 400
+    template = db.session.get(EmailTemplate, template_id)
+    if template is None:
+        db.session.commit()
+        return jsonify(error="gmail_test_template_not_found"), 400
+    if "\r" in template.subject or "\n" in template.subject:
+        db.session.commit()
+        return jsonify(error="gmail_test_template_invalid"), 400
     error = None
     status = 502
     try:
-        test_gmail_profile(profile, recipient.email)
+        if not profile.encrypted_app_password:
+            raise RuntimeError("Gmail credentials are unavailable")
+        password = decrypt_app_password(profile.encrypted_app_password)
+    except (RuntimeError, ValueError, InvalidToken):
+        error = "gmail_credentials_unavailable"
+        status = 503
+    try:
+        if error is None:
+            test_gmail_profile(profile, recipient.email, template, password)
     except smtplib.SMTPAuthenticationError:
         error = "gmail_authentication_failed"
     except smtplib.SMTPException:
         error = "gmail_provider_rejected"
     except OSError:
         error = "gmail_connection_failed"
-    except (RuntimeError, ValueError, InvalidToken):
+    except RuntimeError:
         error = "gmail_credentials_unavailable"
         status = 503
-    else:
+    except ValueError:
+        error = "gmail_test_template_invalid"
+        status = 400
+    if error is None:
         profile.last_test_succeeded = True
     db.session.commit()
     if error:

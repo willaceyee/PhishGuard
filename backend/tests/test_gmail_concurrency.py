@@ -63,7 +63,8 @@ def concurrent_gmail(tmp_path):
         headers = {"Authorization": f"Bearer {create_access_token(identity=str(admin.admin_id))}"}
         campaign_id = campaign.campaign_id
         recipient_ids = [recipient.user_id for recipient in campaign.recipients]
-    yield app, headers, campaign_id, recipient_ids
+        template_id = campaign.template_id
+    yield app, headers, campaign_id, recipient_ids, template_id
     with app.app_context():
         db.session.remove()
         db.drop_all()
@@ -79,7 +80,7 @@ def concurrent_gmail(tmp_path):
 def test_overlapping_connection_test_and_patch_cannot_certify_replacement_credentials(
     concurrent_gmail, updates, expected_success,
 ):
-    app, headers, _, recipient_ids = concurrent_gmail
+    app, headers, _, recipient_ids, template_id = concurrent_gmail
     with app.app_context():
         profile = db.session.scalar(db.select(SendingProfile))
         profile.last_test_succeeded = False
@@ -99,7 +100,7 @@ def test_overlapping_connection_test_and_patch_cannot_certify_replacement_creden
             outcomes["test"] = client.post(
                 "/api/sending-profile/test",
                 headers=headers,
-                json={"recipient_user_id": recipient_ids[0]},
+                json={"recipient_user_id": recipient_ids[0], "template_id": template_id},
             )
 
     def mutate_profile():
@@ -147,7 +148,7 @@ def test_overlapping_connection_test_and_patch_cannot_certify_replacement_creden
                "failed_test", "removed_profile"],
 )
 def test_committed_gmail_gate_change_aborts_remaining_messages(concurrent_gmail, stage, change):
-    app, headers, campaign_id, recipient_ids = concurrent_gmail
+    app, headers, campaign_id, recipient_ids, template_id = concurrent_gmail
     reached = Event()
     release = Event()
     outcomes = {}
@@ -185,7 +186,7 @@ def test_committed_gmail_gate_change_aborts_remaining_messages(concurrent_gmail,
                         mutation = client.post(
                             "/api/sending-profile/test",
                             headers=headers,
-                            json={"recipient_user_id": recipient_ids[0]},
+                            json={"recipient_user_id": recipient_ids[0], "template_id": template_id},
                         )
                 elif change == "removed_profile":
                     mutation = client.patch(
@@ -239,7 +240,7 @@ def test_committed_gmail_gate_change_aborts_remaining_messages(concurrent_gmail,
 
 
 def test_gmail_batch_keeps_authenticated_sender_snapshot_after_session_expiration(concurrent_gmail):
-    app, headers, campaign_id, _ = concurrent_gmail
+    app, headers, campaign_id, _, _ = concurrent_gmail
     reached = Event()
     release = Event()
     messages = []
@@ -296,7 +297,7 @@ def test_gmail_batch_keeps_authenticated_sender_snapshot_after_session_expiratio
 
 @pytest.mark.parametrize("change", ["disabled", "revoked"])
 def test_gmail_final_gate_through_dispatch_is_atomic_with_mutations(concurrent_gmail, change):
-    app, headers, campaign_id, recipient_ids = concurrent_gmail
+    app, headers, campaign_id, recipient_ids, _ = concurrent_gmail
     with app.app_context():
         campaign = db.session.get(Campaign, campaign_id)
         db.session.add(CampaignRecipient(
