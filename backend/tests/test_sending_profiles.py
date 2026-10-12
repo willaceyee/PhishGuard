@@ -369,11 +369,22 @@ def approved_sender(app):
 def test_gmail_connection_uses_tls_and_sends_only_to_approved_sender(
     client, auth_headers, stored_profile, approved_sender, caplog
 ):
+    recipient = User(
+        name="Test Recipient",
+        email="recipient@example.com",
+        simulation_email_approved=True,
+    )
+    db.session.add(recipient)
+    db.session.commit()
     with patch("smtplib.SMTP") as smtp_class, patch(
         "ssl.create_default_context", wraps=ssl.create_default_context
     ) as context_factory:
         smtp = smtp_class.return_value.__enter__.return_value
-        response = client.post("/api/sending-profile/test", headers=auth_headers)
+        response = client.post(
+            "/api/sending-profile/test",
+            json={"recipient_user_id": recipient.user_id},
+            headers=auth_headers,
+        )
     assert response.status_code == 200
     smtp_class.assert_called_once_with("smtp.gmail.com", 587, timeout=10)
     context_factory.assert_called_once_with()
@@ -385,7 +396,7 @@ def test_gmail_connection_uses_tls_and_sends_only_to_approved_sender(
     smtp.login.assert_called_once_with("owner@gmail.com", "abcdefghijklmnop")
     smtp.send_message.assert_called_once()
     message = smtp.send_message.call_args.args[0]
-    assert getaddresses(message.get_all("To")) == [("", "owner@gmail.com")]
+    assert getaddresses(message.get_all("To")) == [("", "recipient@example.com")]
     assert getaddresses(message.get_all("From")) == [("Simulation Admin", "owner@gmail.com")]
     assert message.get_all("Cc") is None
     assert message.get_all("Bcc") is None
@@ -404,6 +415,46 @@ def test_gmail_connection_uses_tls_and_sends_only_to_approved_sender(
     assert stored_profile.encrypted_app_password not in caplog.text
 
 
+@pytest.mark.parametrize("payload", [None, {}, {"recipient_user_id": "1"}, {"recipient_user_id": 9999}])
+def test_connection_requires_an_existing_approved_test_recipient_before_decryption(
+    client, auth_headers, stored_profile, approved_sender, payload
+):
+    with patch("app.sending_profiles.decrypt_app_password") as decrypt, patch(
+        "smtplib.SMTP"
+    ) as smtp_class:
+        response = client.post(
+            "/api/sending-profile/test", json=payload, headers=auth_headers
+        )
+    assert response.status_code == 403
+    assert response.get_json() == {"error": "gmail_test_recipient_not_approved"}
+    decrypt.assert_not_called()
+    smtp_class.assert_not_called()
+
+
+def test_connection_rejects_a_test_recipient_whose_approval_was_revoked(
+    client, auth_headers, stored_profile, approved_sender
+):
+    recipient = User(
+        name="Revoked Recipient",
+        email="recipient@example.com",
+        simulation_email_approved=False,
+    )
+    db.session.add(recipient)
+    db.session.commit()
+    with patch("app.sending_profiles.decrypt_app_password") as decrypt, patch(
+        "smtplib.SMTP"
+    ) as smtp_class:
+        response = client.post(
+            "/api/sending-profile/test",
+            json={"recipient_user_id": recipient.user_id},
+            headers=auth_headers,
+        )
+    assert response.status_code == 403
+    assert response.get_json() == {"error": "gmail_test_recipient_not_approved"}
+    decrypt.assert_not_called()
+    smtp_class.assert_not_called()
+
+
 @pytest.mark.parametrize(
     "email,approved", [(None, False), ("owner@gmail.com", False),
                        ("different@gmail.com", True), ("Owner@gmail.com", True)],
@@ -411,13 +462,23 @@ def test_gmail_connection_uses_tls_and_sends_only_to_approved_sender(
 def test_connection_requires_exact_approved_user_before_decryption(
     client, auth_headers, stored_profile, email, approved
 ):
+    recipient = User(
+        name="Test Recipient",
+        email="recipient@example.com",
+        simulation_email_approved=True,
+    )
+    db.session.add(recipient)
     if email:
         db.session.add(User(name="Owner", email=email, simulation_email_approved=approved))
-        db.session.commit()
+    db.session.commit()
     stored_profile.last_test_succeeded = True
     db.session.commit()
     with patch("app.sending_profiles.decrypt_app_password") as decrypt, patch("smtplib.SMTP") as smtp_class:
-        response = client.post("/api/sending-profile/test", headers=auth_headers)
+        response = client.post(
+            "/api/sending-profile/test",
+            json={"recipient_user_id": recipient.user_id},
+            headers=auth_headers,
+        )
     assert response.status_code == 403
     decrypt.assert_not_called()
     smtp_class.assert_not_called()
@@ -449,7 +510,11 @@ def test_connection_errors_are_safe_and_persist_failed_state(
         else:
             smtp = smtp_class.return_value.__enter__.return_value
             getattr(smtp, stage).side_effect = error
-        response = client.post("/api/sending-profile/test", headers=auth_headers)
+        response = client.post(
+            "/api/sending-profile/test",
+            json={"recipient_user_id": approved_sender.user_id},
+            headers=auth_headers,
+        )
     assert response.status_code == 502
     assert response.get_json() == {"error": code}
     db.session.expire_all()
@@ -473,7 +538,11 @@ def test_unusable_credentials_fail_safely_and_persist_state(
     stored_profile.last_test_succeeded = True
     db.session.commit()
     with patch("smtplib.SMTP") as smtp_class:
-        response = client.post("/api/sending-profile/test", headers=auth_headers)
+        response = client.post(
+            "/api/sending-profile/test",
+            json={"recipient_user_id": approved_sender.user_id},
+            headers=auth_headers,
+        )
     assert response.status_code == 503
     assert response.get_json() == {"error": "gmail_credentials_unavailable"}
     smtp_class.assert_not_called()
@@ -569,8 +638,13 @@ def test_persistence_errors_do_not_expose_credential_bind_parameters(
             Exception("plaintext-marker-abcdefghijklmnop"),
         )
 
+    request_payload = (
+        {"recipient_user_id": approved_sender.user_id}
+        if path == "/api/sending-profile/test"
+        else profile_payload
+    )
     with patch.object(db.session, "commit", side_effect=fail_commit), patch("smtplib.SMTP"):
-        response = getattr(client, method)(path, json=profile_payload, headers=auth_headers)
+        response = getattr(client, method)(path, json=request_payload, headers=auth_headers)
     for marker in bound_ciphertexts + [previous_ciphertext, "plaintext-marker-abcdefghijklmnop"]:
         assert marker not in response.get_data(as_text=True)
         assert marker not in caplog.text
@@ -593,7 +667,10 @@ def test_unapproved_test_persistence_failure_is_safe(
     ciphertext = stored_profile.encrypted_app_password
     failure = DataError("statement", {"encrypted_app_password": ciphertext}, Exception("plaintext-marker"))
     with patch.object(db.session, "commit", side_effect=failure), patch("smtplib.SMTP") as smtp:
-        response = client.post("/api/sending-profile/test", headers=auth_headers)
+        response = client.post(
+            "/api/sending-profile/test",
+            headers=auth_headers,
+        )
     assert ciphertext not in response.get_data(as_text=True)
     assert ciphertext not in caplog.text
     assert "plaintext-marker" not in response.get_data(as_text=True)

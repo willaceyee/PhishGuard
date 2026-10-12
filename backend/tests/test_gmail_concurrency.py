@@ -79,7 +79,7 @@ def concurrent_gmail(tmp_path):
 def test_overlapping_connection_test_and_patch_cannot_certify_replacement_credentials(
     concurrent_gmail, updates, expected_success,
 ):
-    app, headers, _, _ = concurrent_gmail
+    app, headers, _, recipient_ids = concurrent_gmail
     with app.app_context():
         profile = db.session.scalar(db.select(SendingProfile))
         profile.last_test_succeeded = False
@@ -96,7 +96,11 @@ def test_overlapping_connection_test_and_patch_cannot_certify_replacement_creden
 
     def test_connection():
         with app.test_client() as client:
-            outcomes["test"] = client.post("/api/sending-profile/test", headers=headers)
+            outcomes["test"] = client.post(
+                "/api/sending-profile/test",
+                headers=headers,
+                json={"recipient_user_id": recipient_ids[0]},
+            )
 
     def mutate_profile():
         try:
@@ -178,7 +182,11 @@ def test_committed_gmail_gate_change_aborts_remaining_messages(concurrent_gmail,
                     )
                 elif change == "failed_test":
                     with patch("app.sending_profiles.test_gmail_profile", side_effect=RuntimeError()):
-                        mutation = client.post("/api/sending-profile/test", headers=headers)
+                        mutation = client.post(
+                            "/api/sending-profile/test",
+                            headers=headers,
+                            json={"recipient_user_id": recipient_ids[0]},
+                        )
                 elif change == "removed_profile":
                     mutation = client.patch(
                         f"/api/campaigns/{campaign_id}", headers=headers,

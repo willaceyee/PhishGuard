@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { createSendingProfile, deleteSendingProfile, getSendingProfile, testSendingProfile, updateSendingProfile } from '../services/api.js'
+import { createSendingProfile, deleteSendingProfile, getSendingProfile, listUsers, testSendingProfile, updateSendingProfile } from '../services/api.js'
 
 const emptyForm = { name: '', from_name: '', from_email: '' }
 const errorMessages = {
@@ -11,6 +11,7 @@ const errorMessages = {
   sending_profile_in_use: 'This profile is used by a campaign and cannot be deleted.',
   sending_profile_persistence_failed: 'Unable to save the sending profile. Please try again.',
   gmail_sender_not_approved: 'Approve this Gmail address for simulation email in Users before sending a test.',
+  gmail_test_recipient_not_approved: 'Select an approved user to receive the test email.',
   gmail_authentication_failed: 'Gmail authentication failed. Check the Google app password.',
   gmail_provider_rejected: 'Gmail rejected the test email. Check the account and try again.',
   gmail_connection_failed: 'Unable to connect to Gmail. Please try again.',
@@ -30,6 +31,9 @@ export default function SendingProfiles({ token }) {
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const [testStatusAvailable, setTestStatusAvailable] = useState(true)
+  const [approvedUsers, setApprovedUsers] = useState([])
+  const [testRecipientId, setTestRecipientId] = useState('')
+  const [recipientError, setRecipientError] = useState('')
   const lastTestedAt = testStatusAvailable ? profile?.last_tested_at : null
   const testTimestamp = lastTestedAt && !/(?:Z|[+-]\d{2}:?\d{2})$/i.test(lastTestedAt) ? `${lastTestedAt}Z` : lastTestedAt
 
@@ -41,6 +45,11 @@ export default function SendingProfiles({ token }) {
       setTestStatusAvailable(true)
       if (data.profile) setForm({ name: data.profile.name, from_name: data.profile.from_name, from_email: data.profile.from_email })
     }).catch((requestError) => { if (!cancelled) setError(safeError(requestError)) }).finally(() => { if (!cancelled) setLoading(false) })
+    listUsers(token).then((usersData) => {
+      if (!cancelled) setApprovedUsers(usersData.users.filter((user) => user.simulation_email_approved))
+    }).catch(() => {
+      if (!cancelled) setRecipientError('Unable to load approved test recipients. Other profile controls are still available.')
+    })
     return () => { cancelled = true }
   }, [token])
 
@@ -63,7 +72,7 @@ export default function SendingProfiles({ token }) {
         else if (action === 'save') result = await updateSendingProfile(token, form)
         else if (action === 'replace') result = await updateSendingProfile(token, { app_password: password })
         else if (action === 'toggle') result = await updateSendingProfile(token, { enabled: !profile.enabled })
-        else result = await testSendingProfile(token)
+        else result = await testSendingProfile(token, Number(testRecipientId))
         if (action === 'create' || action === 'replace') setPassword('')
         setProfile(result.profile)
         setTestStatusAvailable(true)
@@ -72,7 +81,7 @@ export default function SendingProfiles({ token }) {
         else if (action === 'save') setNotice('Metadata saved.')
         else if (action === 'replace') setNotice('App password replaced.')
         else if (action === 'toggle') setNotice(result.profile.enabled ? 'Profile enabled.' : 'Profile disabled.')
-        else setNotice(`Test email sent to ${result.profile.from_email}.`)
+        else setNotice(`Test email sent to ${approvedUsers.find((user) => user.user_id === Number(testRecipientId))?.email}.`)
       }
     } catch (requestError) {
       setError(safeError(requestError))
@@ -88,8 +97,9 @@ export default function SendingProfiles({ token }) {
   }
 
   return <section className="workspace-page sending-profile-page">
-    <div className="page-heading"><div><p className="eyebrow">Gmail delivery</p><h2>Sending profile</h2><p>Configure one Gmail account for approved simulation email. Test emails are sent to the profile’s own approved Gmail address.</p></div>{profile && <span className="count-pill">{profile.enabled ? 'Enabled' : 'Disabled'}</span>}</div>
+    <div className="page-heading"><div><p className="eyebrow">Gmail delivery</p><h2>Sending profile</h2><p>Configure one Gmail account for approved simulation email. Test emails can only be sent to an approved user.</p></div>{profile && <span className="count-pill">{profile.enabled ? 'Enabled' : 'Disabled'}</span>}</div>
     {error && <div className="dashboard-error" role="alert">{error}</div>}
+    {recipientError && <div className="dashboard-error" role="alert">{recipientError}</div>}
     {notice && <div className="success-note" role="status">{notice}</div>}
     {loading ? <p className="loading-state">Loading sending profile…</p> : profile !== undefined && <form className="form-card sending-profile-form" onSubmit={(event) => { event.preventDefault(); runAction(profile ? 'save' : 'create') }}>
       {!profile && <p className="muted">No Gmail profile configured.</p>}
@@ -105,7 +115,12 @@ export default function SendingProfiles({ token }) {
         {profile && <button className="secondary-button" type="button" disabled={!!pending || !password.trim()} onClick={() => runAction('replace')}>{pending === 'replace' ? 'Replacing…' : 'Replace password'}</button>}
       </div>
       {profile && <div className="sending-profile-actions">
-        <button className="small-button" type="button" disabled={!!pending} onClick={() => runAction('test')}>{pending === 'test' ? 'Sending test…' : 'Send test'}</button>
+        <label htmlFor="test-recipient">Test send to</label>
+        <select id="test-recipient" value={testRecipientId} disabled={!!pending || !!recipientError} onChange={(event) => setTestRecipientId(event.target.value)}>
+          <option value="">{recipientError ? 'Approved users unavailable' : 'Select an approved user'}</option>
+          {approvedUsers.map((user) => <option key={user.user_id} value={user.user_id}>{user.name} — {user.email}</option>)}
+        </select>
+        <button className="small-button" type="button" disabled={!!pending || !testRecipientId} onClick={() => runAction('test')}>{pending === 'test' ? 'Sending test…' : 'Send test'}</button>
         <button className="small-button" type="button" disabled={!!pending} onClick={() => runAction('toggle')}>{pending === 'toggle' ? profile.enabled ? 'Disabling…' : 'Enabling…' : profile.enabled ? 'Disable' : 'Enable'}</button>
         <button className="danger-link" type="button" disabled={!!pending} onClick={() => runAction('delete')}>{pending === 'delete' ? 'Deleting…' : 'Delete'}</button>
       </div>}

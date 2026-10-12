@@ -154,18 +154,18 @@ def delete_profile():
     return "", 204
 
 
-def test_gmail_profile(profile: SendingProfile) -> None:
+def test_gmail_profile(profile: SendingProfile, recipient_email: str) -> None:
     if not profile.encrypted_app_password:
         raise RuntimeError("Gmail credentials are unavailable")
     password = decrypt_app_password(profile.encrypted_app_password)
     message = EmailMessage()
     message["Subject"] = "[SECURITY SIMULATION] PhishGuard connection test"
     message["From"] = formataddr((profile.from_name, profile.from_email))
-    message["To"] = profile.from_email
+    message["To"] = recipient_email
     message["X-PhishGuard-Simulation"] = "authorized-training"
     message.set_content(
-        "This is a PhishGuard security simulation connection test sent to your own "
-        "approved Gmail address. No action is required."
+        "This is a PhishGuard security simulation connection test sent to an "
+        "approved recipient. No action is required."
     )
     context = ssl.create_default_context()
     with smtplib.SMTP("smtp.gmail.com", 587, timeout=10) as smtp:
@@ -192,10 +192,24 @@ def test_profile_connection():
     if approved_user is None:
         db.session.commit()
         return jsonify(error="gmail_sender_not_approved"), 403
+    data = request.get_json(silent=True)
+    recipient_user_id = data.get("recipient_user_id") if isinstance(data, dict) else None
+    if isinstance(recipient_user_id, bool) or not isinstance(recipient_user_id, int):
+        db.session.commit()
+        return jsonify(error="gmail_test_recipient_not_approved"), 403
+    recipient = db.session.scalar(
+        db.select(User).where(
+            User.user_id == recipient_user_id,
+            User.simulation_email_approved.is_(True),
+        )
+    )
+    if recipient is None:
+        db.session.commit()
+        return jsonify(error="gmail_test_recipient_not_approved"), 403
     error = None
     status = 502
     try:
-        test_gmail_profile(profile)
+        test_gmail_profile(profile, recipient.email)
     except smtplib.SMTPAuthenticationError:
         error = "gmail_authentication_failed"
     except smtplib.SMTPException:

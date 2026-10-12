@@ -47,5 +47,5 @@ export const predictUrl = (token, url) => request('/api/detection/predict', { to
 export const getSendingProfile = (token) => request('/api/sending-profile', { token })
 export const createSendingProfile = (token, profile) => request('/api/sending-profile', { token, method: 'POST', body: JSON.stringify(profile) })
 export const updateSendingProfile = (token, profile) => request('/api/sending-profile', { token, method: 'PATCH', body: JSON.stringify(profile) })
-export const testSendingProfile = (token) => request('/api/sending-profile/test', { token, method: 'POST' })
+export const testSendingProfile = (token, recipientUserId) => request('/api/sending-profile/test', { token, method: 'POST', body: JSON.stringify({ recipient_user_id: recipientUserId }) })
 export const deleteSendingProfile = (token) => request('/api/sending-profile', { token, method: 'DELETE' })
