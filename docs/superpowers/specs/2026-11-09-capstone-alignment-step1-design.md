@@ -24,6 +24,7 @@ Bring the implemented awareness quiz and automated evidence into agreement with 
 - Existing quiz records remain valid because each result stores its own total question count.
 - Evidence must come from commands run on the final implementation, not estimated values.
 - The evidence document must continue to state that participant and awareness evaluation are pending.
+- Completed work must be committed and pushed to the dedicated GitHub feature branch for Willace's review. It must not be merged into `main` until Willace approves the reviewed branch.
 
 ## Approaches Considered
 
@@ -52,3 +53,4 @@ After all checks pass, `docs/evidence/test_summary.md` will be updated with the 
 - Backend tests, frontend tests, frontend lint, and frontend production build pass.
 - GitHub Actions contains an explicit frontend test step.
 - The evidence summary matches the fresh verification output.
+- The verified implementation is pushed to `codex/capstone-alignment-step1` for review, with `main` unchanged until approval.
