@@ -53,4 +53,4 @@ After all checks pass, `docs/evidence/test_summary.md` will be updated with the 
 - Backend tests, frontend tests, frontend lint, and frontend production build pass.
 - GitHub Actions contains an explicit frontend test step.
 - The evidence summary matches the fresh verification output.
-- The verified implementation is pushed to `codex/capstone-alignment-step1` for review, with `main` unchanged until approval.
+- The verified implementation is pushed to `feature/capstone-alignment-step1` for review, with `main` unchanged until approval.
