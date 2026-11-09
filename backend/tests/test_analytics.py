@@ -51,7 +51,13 @@ def test_dashboard_aggregates_unique_events_and_risk(client, auth_headers):
     token = training_path.rsplit("/", 1)[-1]
     client.post(
         f"/quiz/{token}",
-        data={"sender": "b", "urgent": "a", "credentials": "a", "report": "b"},
+        data={
+            "sender": "b",
+            "urgent": "a",
+            "credentials": "a",
+            "report": "b",
+            "links": "b",
+        },
     )
 
     response = client.get("/api/dashboard/overview", headers=auth_headers)

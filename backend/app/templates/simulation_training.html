@@ -23,19 +23,23 @@
       <h1>This was a simulation.</h1>
       <p>{{ user_name }}, the page was part of <strong>{{ campaign_name }}</strong>. No credentials were captured or stored.</p>
       <section class="lesson">
-        <h2>1. Inspect the sender and link</h2>
-        <p>Attackers copy familiar display names and branding. Check the full sender address, then hover over links and inspect the real destination before opening them.</p>
+        <h2>1. Inspect the sender</h2>
+        <p>Attackers copy familiar display names and branding. Check the full sender address before trusting the message.</p>
       </section>
       <section class="lesson">
-        <h2>2. Pause when a message creates urgency</h2>
+        <h2>2. Inspect the link destination</h2>
+        <p>Inspect the real destination before opening a link. When possible, use a trusted bookmark or the official application instead.</p>
+      </section>
+      <section class="lesson">
+        <h2>3. Pause when a message creates urgency</h2>
         <p>Threats of account closure, unexpected invoices, prizes, and immediate deadlines are common pressure tactics. A request becoming urgent does not make it trustworthy.</p>
       </section>
       <section class="lesson">
-        <h2>3. Verify through a known channel</h2>
+        <h2>4. Verify through a known channel</h2>
         <p>Open the official website or application directly using a saved bookmark. Contact the supposed sender through a trusted directory—not through details in the suspicious message.</p>
       </section>
       <section class="lesson">
-        <h2>4. Report suspicious messages</h2>
+        <h2>5. Report suspicious messages</h2>
         <p>Report the message using your organization’s approved process. Early reporting helps protect other recipients and gives the security team useful context.</p>
       </section>
       <a class="button" href="{{ url_for('training.quiz_result_page' if completed else 'training.quiz_page', token=token) }}">{{ 'Review quiz result' if completed else 'Take the awareness quiz' }}</a>

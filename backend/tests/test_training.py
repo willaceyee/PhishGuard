@@ -38,14 +38,26 @@ def test_training_quiz_and_admin_results(client, auth_headers, app):
     assert training.status_code == 200
     assert b"Take the awareness quiz" in training.data
     assert b"Verify through a known channel" in training.data
+    assert b"Inspect the link destination" in training.data
 
-    missing_answers = client.post(f"/quiz/{token}", data={"sender": "a"})
+    missing_answers = client.post(
+        f"/quiz/{token}",
+        data={"sender": "a", "urgent": "b", "credentials": "c", "report": "a"},
+    )
     assert missing_answers.status_code == 400
     assert b"answer every question" in missing_answers.data
+    with app.app_context():
+        assert db.session.scalar(db.select(QuizResult)) is None
 
     submitted = client.post(
         f"/quiz/{token}",
-        data={"sender": "a", "urgent": "b", "credentials": "c", "report": "a"},
+        data={
+            "sender": "a",
+            "urgent": "b",
+            "credentials": "c",
+            "report": "a",
+            "links": "a",
+        },
     )
     assert submitted.status_code == 303
     result_page = client.get(submitted.headers["Location"])
@@ -64,18 +76,31 @@ def test_training_quiz_and_admin_results(client, auth_headers, app):
     assert len(training_results) == 1
     assert training_results[0]["completed"] is True
     assert len(quiz_results) == 1
-    assert quiz_results[0]["score"] == 4
+    assert quiz_results[0]["score"] == 5
+    assert quiz_results[0]["total_questions"] == 5
     assert quiz_results[0]["percentage"] == 100
 
     with app.app_context():
         assert db.session.scalar(db.select(TrainingResult)).completed is True
-        assert db.session.scalar(db.select(QuizResult)).total_questions == 4
+        assert db.session.scalar(db.select(QuizResult)).total_questions == 5
 
 
 def test_quiz_retry_replaces_previous_result(client, auth_headers):
     campaign, token = create_training_token(client, auth_headers)
-    correct = {"sender": "a", "urgent": "b", "credentials": "c", "report": "a"}
-    incorrect = {"sender": "b", "urgent": "a", "credentials": "a", "report": "b"}
+    correct = {
+        "sender": "a",
+        "urgent": "b",
+        "credentials": "c",
+        "report": "a",
+        "links": "a",
+    }
+    incorrect = {
+        "sender": "b",
+        "urgent": "a",
+        "credentials": "a",
+        "report": "b",
+        "links": "b",
+    }
 
     assert client.post(f"/quiz/{token}", data=correct).status_code == 303
     assert client.post(f"/quiz/{token}", data=incorrect).status_code == 303
@@ -86,7 +111,14 @@ def test_quiz_retry_replaces_previous_result(client, auth_headers):
     ).get_json()["results"]
     assert len(results) == 1
     assert results[0]["score"] == 0
+    assert results[0]["total_questions"] == 5
     assert results[0]["percentage"] == 0
+
+
+def test_historical_four_question_result_keeps_its_percentage(app):
+    with app.app_context():
+        result = QuizResult(score=4, total_questions=4)
+        assert result.percentage == 100
 
 
 def test_training_results_are_admin_only(client, auth_headers):

@@ -61,6 +61,17 @@ QUIZ_QUESTIONS = (
         "correct": "a",
         "explanation": "Early reports help security teams investigate and warn or protect other users.",
     },
+    {
+        "id": "links",
+        "prompt": "Before opening a link in an unexpected email, what should you do?",
+        "choices": (
+            ("a", "Inspect the real destination and use a trusted route to the service"),
+            ("b", "Trust it whenever the address begins with HTTPS"),
+            ("c", "Open it if the message uses a familiar logo"),
+        ),
+        "correct": "a",
+        "explanation": "Inspect the destination first and use a known bookmark or official application when possible.",
+    },
 )
 
 
