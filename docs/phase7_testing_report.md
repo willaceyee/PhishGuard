@@ -12,17 +12,18 @@ Run from `backend`:
 .\venv\Scripts\python.exe -m pytest -q
 ```
 
-The suite enforces at least 85% statement coverage and writes `coverage.xml`. Current local verification contains 26 passing tests with 88.55% coverage.
+The suite enforces at least 85% statement coverage and writes `coverage.xml`. Current local verification contains 314 passing tests with 91.06% coverage.
 
 The frontend quality checks are:
 
 ```powershell
 cd frontend
+npm test
 npm run lint
 npm run build
 ```
 
-GitHub Actions repeats backend tests and frontend lint/build on every push and pull request.
+GitHub Actions repeats backend tests plus frontend tests, lint, and build on every push and pull request.
 
 ## Security checks completed
 

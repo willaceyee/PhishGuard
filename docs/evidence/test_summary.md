@@ -1,14 +1,14 @@
 # Phase 7 Automated Test Evidence
 
-Verification date: 22 August 2026
+Verification date: 9 November 2026
 
 Environment: Windows, Python 3.12, Node.js 20
 
 ## Backend
 
 ```text
-26 passed
-Statement coverage: 88.55%
+314 passed
+Statement coverage: 91.06%
 Required threshold: 85%
 ```
 
@@ -24,6 +24,7 @@ cd backend
 ## Frontend
 
 ```text
+Vitest: 2 test files passed, 56 tests passed
 ESLint: passed
 Vite production build: passed
 ```
@@ -32,16 +33,17 @@ Run the evidence again with:
 
 ```powershell
 cd frontend
+npm test
 npm run lint
 npm run build
 ```
 
 ## Continuous integration
 
-`.github/workflows/ci.yml` runs both verification groups for pushes and pull requests targeting `main`.
+`.github/workflows/ci.yml` runs the backend test suite plus frontend tests, lint, and build for pushes and pull requests targeting `main`.
 
 ## Evidence limitations
 
-- Usability outcomes are not included because participant testing has not yet occurred.
+- Usability outcomes are not included because participant testing is pending.
 - Real-world model-performance claims are not included because the current dataset is synthetic development data.
 - Interface screenshots are not included yet; use the anonymous evidence seeder and the procedure in the Phase 7 guide to generate them without exposing real users or tokens.
