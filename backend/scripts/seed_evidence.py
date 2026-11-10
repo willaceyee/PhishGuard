@@ -75,8 +75,8 @@ def seed():
                 ),
                 QuizResult(
                     recipient=recipients[0],
-                    score=3,
-                    total_questions=4,
+                    score=4,
+                    total_questions=5,
                     completed_at=utc_now(),
                 ),
                 TrackingEvent(recipient=recipients[1], event_type="link_clicked"),
@@ -86,8 +86,8 @@ def seed():
                 ),
                 QuizResult(
                     recipient=recipients[2],
-                    score=4,
-                    total_questions=4,
+                    score=5,
+                    total_questions=5,
                     completed_at=utc_now(),
                 ),
             ]
