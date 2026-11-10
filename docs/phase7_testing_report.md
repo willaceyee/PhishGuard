@@ -12,7 +12,7 @@ Run from `backend`:
 .\venv\Scripts\python.exe -m pytest -q
 ```
 
-The suite enforces at least 85% statement coverage and writes `coverage.xml`. Current local verification contains 314 passing tests with 91.06% coverage.
+The suite enforces at least 85% statement coverage and writes `coverage.xml`. Current local verification contains 316 passing tests with 91.06% coverage.
 
 The frontend quality checks are:
 
@@ -23,7 +23,7 @@ npm run lint
 npm run build
 ```
 
-GitHub Actions repeats backend tests plus frontend tests, lint, and build on every push and pull request.
+GitHub Actions repeats backend tests plus frontend tests, lint, and build for pushes to `main` and pull requests targeting `main`.
 
 ## Security checks completed
 
@@ -105,18 +105,22 @@ Save the final metrics with the dataset identity, code commit, feature schema, r
 
 ## Final report evidence
 
-Recommended evidence includes:
+Completed screenshot evidence is indexed in
+[`evidence/screenshots/README.md`](evidence/screenshots/README.md) and includes:
 
-- CI run showing passing backend and frontend jobs
-- coverage summary
-- administrator login screen
-- populated analytics dashboard
-- campaign performance table
-- user-risk table and disclosed formula
-- simulation awareness page and quiz result
-- URL prediction response with SHAP factors
-- anonymized usability-results table
-- real-world confusion matrix and metric table
+- a CI run showing passing backend and frontend jobs
+- the administrator login screen
+- the populated analytics dashboard, campaign performance, and user-risk table
+- the simulation awareness page and five-question quiz
+- a URL prediction response with SHAP factors
+
+The automated coverage summary is recorded in
+[`evidence/test_summary.md`](evidence/test_summary.md).
+
+Evidence that still requires representative external data or genuine participants:
+
+- anonymized usability results from participant testing
+- a real-world confusion matrix and metric table from an untouched evaluation dataset
 
 Screenshots should show no passwords, tokens, personal email addresses, or real tracking URLs.
 

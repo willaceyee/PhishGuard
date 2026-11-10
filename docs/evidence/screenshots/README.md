@@ -14,6 +14,7 @@ addresses, real tracking links, or production URLs.
 | `03-url-detection-shap.jpg` | Offline URL prediction and the five highest-impact SHAP factors for a reserved test URL |
 | `04-awareness-training.jpg` | Five-part phishing-awareness lesson shown after a controlled simulation |
 | `05-five-question-quiz.jpg` | Complete five-question awareness quiz and prior anonymized result |
+| `06-passing-ci.jpg` | Pull request checks showing successful backend and frontend CI jobs |
 
 ## Capture Controls
 
@@ -21,5 +22,4 @@ addresses, real tracking links, or production URLs.
 - The detector analyzed only a reserved `example.test` URL and did not visit it.
 - The disposable database is excluded from Git and must not be replaced with a
   working administrator database.
-- A passing continuous-integration screenshot will be added after the feature
-  branch receives its remote workflow run.
+- The CI screenshot was captured from pull request #1 on the feature branch.

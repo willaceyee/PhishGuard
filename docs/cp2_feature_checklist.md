@@ -52,6 +52,6 @@
 - [x] Integration testing
 - [ ] Usability testing
 - [ ] Model evaluation
-- [ ] Final report screenshots
+- [x] Final report screenshots
 
 Usability testing requires real participants. Final model evaluation requires a representative real-world dataset; synthetic pipeline metrics are not accepted as final evidence.
