@@ -1,13 +1,13 @@
 # Phase 7 Automated Test Evidence
 
-Verification date: 9 November 2026
+Verification date: 10 November 2026
 
-Environment: Windows, Python 3.12, Node.js 20
+Environment: Windows, Python 3.12, Node.js 24
 
 ## Backend
 
 ```text
-314 passed
+316 passed
 Statement coverage: 91.06%
 Required threshold: 85%
 ```
@@ -42,8 +42,12 @@ npm run build
 
 `.github/workflows/ci.yml` runs the backend test suite plus frontend tests, lint, and build for pushes and pull requests targeting `main`.
 
+## Interface evidence
+
+Anonymized application and passing-CI screenshots are indexed in
+[`screenshots/README.md`](screenshots/README.md).
+
 ## Evidence limitations
 
 - Usability outcomes are not included because participant testing is pending.
 - Real-world model-performance claims are not included because the current dataset is synthetic development data.
-- Interface screenshots are not included yet; use the anonymous evidence seeder and the procedure in the Phase 7 guide to generate them without exposing real users or tokens.
