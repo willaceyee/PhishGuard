@@ -42,23 +42,27 @@ GitHub Actions repeats backend tests plus frontend tests, lint, and build for pu
 
 Do not mark usability testing complete until real participants perform the study.
 
+Use the complete [`usability_testing_guide.md`](usability_testing_guide.md),
+participant-facing [`usability_questionnaire.md`](usability_questionnaire.md),
+and anonymous [`usability_results_template.csv`](usability_results_template.csv)
+to conduct and record each session consistently.
+
 ### Recommended participants
 
-- Five to eight participants representing intended administrator users
-- A mix of technical and non-technical organizational roles
+- Six to eight participants, aiming for at least three administrator-role and
+  three end-user-role participants
+- A mix of technical and non-technical backgrounds
 - Participants who did not build the application
 
 Record anonymous participant codes rather than names or email addresses. Obtain informed consent and explain that the phishing flow is a controlled simulation.
 
 ### Tasks
 
-1. Sign in as an administrator.
-2. Identify the campaign with the highest click-through rate.
-3. Identify users prioritized for additional coaching.
-4. Explain what contributes to a displayed risk score.
-5. Review training completion and quiz performance.
-6. Submit a URL for detection and interpret the SHAP factors.
-7. Change the administrator password and sign in again.
+Administrator participants test sign-in, user and template management, campaign
+creation, dashboard interpretation, and URL detection explanations. End-user
+participants test the controlled simulation link, awareness material, quiz, and
+the clarity of a prepared SHAP explanation. Exact task wording and completion
+conditions are defined in the usability testing guide.
 
 ### Measures
 
