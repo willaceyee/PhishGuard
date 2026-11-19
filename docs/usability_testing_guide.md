@@ -116,5 +116,39 @@ median task completion under two minutes, mean ease and clarity ratings of at
 least 4/5, and no critical issue that prevents login, dashboard interpretation,
 training, quiz completion, or logout.
 
+### Calculating the statistics
+
+Save the completed results as a copy of `usability_results_template.csv` outside
+Git, then run from `backend`:
+
+```powershell
+.\venv\Scripts\python.exe -m scripts.analyze_usability path\to\completed_results.csv
+```
+
+Add `--json` for machine-readable output. For each role and for all
+participants combined, the script reports:
+
+- participant count;
+- success, partial, and failure counts;
+- successful-task completion percentage;
+- median completion time for successful tasks;
+- error and assistance totals;
+- mean ratings.
+
+The script only analyzes recorded rows:
+
+- Participants without `yes` in `consent_confirmed` on their `QUESTIONNAIRE` row
+  are excluded and listed.
+- Task rows with a blank `outcome` are reported as not recorded and are not
+  counted as attempted.
+- Other blank cells are left out of the matching statistic. Each statistic shows
+  the number of values used (`n=`), and task rows with blank cells are listed.
+- Invalid values stop the analysis with line numbers for correction. These
+  include unknown roles or tasks, out-of-range ratings, duplicates, and
+  `success` recorded together with assistance.
+
+The script does not compare results against the acceptance targets, list the
+most common errors, or summarize comments. Review those manually.
+
 Mark the Phase 7 usability-testing checklist item complete only after real
 sessions have been conducted and the anonymized results have been reviewed.
