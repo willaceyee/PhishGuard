@@ -2,9 +2,9 @@
 
 PhishGuard is a phishing simulation and detection platform for organizational cybersecurity awareness.
 
-## Phase 1 status
+## Current status
 
-The project includes a Flask API, a React/Vite frontend, PostgreSQL-ready data models, JWT-protected administration APIs, and a controlled phishing-awareness simulation flow. Advanced machine learning and SHAP work is reserved for a later phase.
+The project includes a Flask API, a React/Vite frontend, PostgreSQL-ready data models, JWT-protected administration APIs, a controlled phishing-awareness simulation flow, an offline Random Forest URL detector with SHAP explanations, and an analytics dashboard. Usability testing with real participants and the final untouched model evaluation are still pending. See [the final model-evaluation plan](docs/final_model_evaluation_plan.md).
 
 ## Main modules
 
@@ -52,7 +52,7 @@ Phase 3 tracking and simulation endpoints are documented in [the Phase 3 simulat
 
 Phase 4 awareness content, quiz scoring, completion storage, and reporting are documented in [the Phase 4 training guide](docs/phase4_training.md).
 
-Phase 5 provides offline URL feature extraction, Random Forest training, a protected prediction API, and SHAP explanations. See [the Phase 5 ML guide](docs/phase5_ml_detection.md).
+Phase 5 provides offline URL feature extraction (19 features, 18 used by the current model), Random Forest training, a protected prediction API, and SHAP explanations. See [the Phase 5 ML guide](docs/phase5_ml_detection.md).
 
 Phase 6 adds a responsive React administrator dashboard with campaign metrics, click and submission rates, training completion, quiz performance, and transparent user risk scores. See [the Phase 6 dashboard guide](docs/phase6_dashboard.md).
 
@@ -93,6 +93,12 @@ cd backend
 ```
 
 The generated `.joblib` model is intentionally ignored by Git and must be trained locally or supplied through `ML_MODEL_PATH`.
+
+With its default paths, `app.ml.train` overwrites the local model and the committed
+`ml_model/artifacts/metrics.json` evidence. When you only need a demo model, pass
+separate `--model` and `--metrics` paths and do not commit the resulting metrics
+file. The recorded external-data results and their limitations are described in
+[the Phase 5 ML guide](docs/phase5_ml_detection.md).
 
 Run the backend tests with:
 

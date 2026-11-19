@@ -81,6 +81,23 @@ Store results in an anonymized table and report both successful and unsuccessful
 
 The synthetic development dataset verifies the pipeline only. Do not report its perfect score as final model performance.
 
+External-data results already exist, but none is a final untouched evaluation.
+The details are in [`phase5_ml_detection.md`](phase5_ml_detection.md):
+
+- `metrics.json`: earlier 15-feature model, random split of a 10,000-row external
+  feature dataset, 89.24% accuracy. It does not show temporal generalization.
+- `baseline_external_evaluation.json`: the same earlier model on later,
+  different-source URLs, 48.29% accuracy. The legitimate data has no collection
+  dates.
+- `raw_training_metrics.json`: current 18-feature model with `uses_https`
+  excluded, trained and assessed on date-separated periods. The diagnostic
+  period scored 86.92% accuracy and 0.9527 ROC-AUC. It has already informed model
+  assessment and cannot be reused as the final untouched test.
+
+The concrete procedure for the final test is in
+[`final_model_evaluation_plan.md`](final_model_evaluation_plan.md). The general
+requirements are below.
+
 Before final evaluation:
 
 1. Select an ethically sourced and licensed dataset with collection dates and label definitions.
@@ -120,7 +137,9 @@ The automated coverage summary is recorded in
 Evidence that still requires representative external data or genuine participants:
 
 - anonymized usability results from participant testing
-- a real-world confusion matrix and metric table from an untouched evaluation dataset
+- a real-world confusion matrix and metric table from an untouched evaluation
+  dataset collected after the final cutoff (the existing diagnostic period does
+  not qualify)
 
 Screenshots should show no passwords, tokens, personal email addresses, or real tracking URLs.
 

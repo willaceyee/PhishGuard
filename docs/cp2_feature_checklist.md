@@ -54,4 +54,4 @@
 - [ ] Model evaluation
 - [x] Final report screenshots
 
-Usability testing requires real participants. Final model evaluation requires a representative real-world dataset; synthetic pipeline metrics are not accepted as final evidence.
+Usability testing requires real participants. Final model evaluation requires a representative real-world dataset; synthetic pipeline metrics are not accepted as final evidence. The existing external-data results, including the raw-URL diagnostic period, are not a final untouched test. See [`final_model_evaluation_plan.md`](final_model_evaluation_plan.md).
