@@ -1,48 +1,32 @@
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Phishing awareness</title>
-    <style>
-      :root { font-family: Arial, sans-serif; color: #e8f1f2; background: #071416; }
-      body { margin: 0; min-height: 100vh; display: grid; place-items: center; padding: 24px; }
-      main { width: min(820px, 100%); padding: 42px; border: 1px solid #2c5557; border-radius: 18px; background: #0d2426; }
-      .tag { color: #76d7c4; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; }
-      h1 { font-size: clamp(2rem, 6vw, 3.6rem); margin: 12px 0; }
-      p, li { color: #bfd0d1; line-height: 1.65; }
-      strong { color: white; }
-      .lesson { margin: 24px 0; padding: 22px; border-radius: 12px; background: #153336; }
-      .lesson h2 { margin-top: 0; color: white; }
-      .button { display: inline-block; margin-top: 18px; padding: 13px 20px; border-radius: 8px; color: #071416; background: #76d7c4; font-weight: 700; text-decoration: none; }
-    </style>
-  </head>
-  <body>
-    <main>
-      <p class="tag">PhishGuard awareness exercise</p>
+{% extends "participant_base.html" %}
+{% block title %}Phishing awareness{% endblock %}
+{% block content %}
+      <p class="label">Simulation</p>
       <h1>This was a simulation.</h1>
       <p>{{ user_name }}, the page was part of <strong>{{ campaign_name }}</strong>. No credentials were captured or stored.</p>
-      <section class="lesson">
-        <h2>1. Inspect the sender</h2>
+      <h2 style="margin: 1.5rem 0 .75rem">Five checks before you trust a message</h2>
+      <section class="card">
+        <h2><span class="step">1</span>Inspect the sender</h2>
         <p>Attackers copy familiar display names and branding. Check the full sender address before trusting the message.</p>
       </section>
-      <section class="lesson">
-        <h2>2. Inspect the link destination</h2>
+      <section class="card">
+        <h2><span class="step">2</span>Inspect the link destination</h2>
         <p>Inspect the real destination before opening a link. When possible, use a trusted bookmark or the official application instead.</p>
       </section>
-      <section class="lesson">
-        <h2>3. Pause when a message creates urgency</h2>
+      <section class="card">
+        <h2><span class="step">3</span>Pause when a message creates urgency</h2>
         <p>Threats of account closure, unexpected invoices, prizes, and immediate deadlines are common pressure tactics. A request becoming urgent does not make it trustworthy.</p>
       </section>
-      <section class="lesson">
-        <h2>4. Verify through a known channel</h2>
+      <section class="card">
+        <h2><span class="step">4</span>Verify through a known channel</h2>
         <p>Open the official website or application directly using a saved bookmark. Contact the supposed sender through a trusted directory—not through details in the suspicious message.</p>
       </section>
-      <section class="lesson">
-        <h2>5. Report suspicious messages</h2>
+      <section class="card">
+        <h2><span class="step">5</span>Report suspicious messages</h2>
         <p>Report the message using your organization’s approved process. Early reporting helps protect other recipients and gives the security team useful context.</p>
       </section>
-      <a class="button" href="{{ url_for('training.quiz_result_page' if completed else 'training.quiz_page', token=token) }}">{{ 'Review quiz result' if completed else 'Take the awareness quiz' }}</a>
-    </main>
-  </body>
-</html>
+      <div class="next">
+        <p>{{ 'You have already completed the quiz.' if completed else 'Next: a short quiz to check what you learned.' }}</p>
+        <a class="button" href="{{ url_for('training.quiz_result_page' if completed else 'training.quiz_page', token=token) }}">{{ 'Review quiz result' if completed else 'Take the awareness quiz' }}</a>
+      </div>
+{% endblock %}
