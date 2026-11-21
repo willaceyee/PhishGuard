@@ -327,11 +327,13 @@ label { color: var(--text-2); font-size: .85rem; font-weight: 600; }
 /* Responsive */
 @media (max-width: 1360px) {
   .nav-item { padding: .5rem .6rem; }
-  .overview-grid { grid-template-columns: minmax(0, 1.6fr) minmax(280px, 1fr); grid-template-areas: "outcomes coaching" "outcomes risk"; }
+  .overview-grid { grid-template-columns: minmax(0, 1.6fr) minmax(280px, 1fr); grid-template-areas: "outcomes coaching" "outcomes risk"; align-items: start; }
+  .bar-chart { flex: none; align-content: start; min-height: 0; }
 }
 @media (max-width: 1180px) {
   .kpi-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  .nav-item span { display: none; }
+  .nav-item span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .nav-item { position: relative; }
   .nav-item { padding: .55rem .65rem; }
   .workspace-grid, .detection-results, .sending-profile-layout { grid-template-columns: 1fr; }
 }
@@ -342,7 +344,7 @@ label { color: var(--text-2); font-size: .85rem; font-weight: 600; }
   .account-menu { padding: 0 1rem; border-left: 0; }
   .app-nav { order: 3; flex: 1 0 100%; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .3rem; padding: .5rem .75rem .65rem; border-top: 1px solid var(--border); }
   .nav-item { justify-content: center; padding: .45rem .3rem; font-size: .82rem; }
-  .nav-item span { display: inline; }
+  .nav-item span { position: static; width: auto; height: auto; overflow: visible; clip: auto; }
   .app-header { position: static; }
   .login-shell { grid-template-columns: 1fr; }
   .login-visual { display: none; }

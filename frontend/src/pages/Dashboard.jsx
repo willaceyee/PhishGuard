@@ -37,9 +37,8 @@ function AccountMenu({ admin, onLogout }) {
 
   return (
     <div className="account-menu" ref={wrapper}>
-      <button ref={toggle} type="button" className="account-toggle" aria-expanded={open} aria-controls="account-panel" onClick={() => setOpen((value) => !value)}>
+      <button ref={toggle} type="button" className="account-toggle" aria-label="Account menu" aria-expanded={open} aria-controls="account-panel" onClick={() => setOpen((value) => !value)}>
         <span className="account-initials" aria-hidden="true">{initials(admin?.name)}</span>
-        <span className="sr-only">Account menu</span>
       </button>
       {open && <div className="account-panel" id="account-panel">
         <strong>{admin?.name || 'Administrator'}</strong>
@@ -67,7 +66,7 @@ export default function Dashboard({ admin, data, error, loading, loadedAt, onLog
         <div className="app-brand"><ShieldMark size={26} /><span>PhishGuard</span></div>
         <nav className="app-nav" aria-label="Main navigation">
           {pages.map(([page, label, icon]) => (
-            <button key={page} type="button" className={`nav-item ${activePage === page ? 'active' : ''}`} aria-current={activePage === page ? 'page' : undefined} onClick={() => navigate(page)}>
+            <button key={page} type="button" className={`nav-item ${activePage === page ? 'active' : ''}`} aria-current={activePage === page ? 'page' : undefined} aria-label={label} title={label} onClick={() => navigate(page)}>
               <Icon name={icon} size={17} /><span>{label}</span>
             </button>
           ))}
