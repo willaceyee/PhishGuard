@@ -39,7 +39,8 @@ export const createCampaign = (token, campaign) => request('/api/campaigns', { t
 export const deleteCampaign = (token, campaignId) => request(`/api/campaigns/${campaignId}`, { token, method: 'DELETE' })
 export const assignRecipients = (token, campaignId, userIds) => request(`/api/campaigns/${campaignId}/recipients`, { token, method: 'POST', body: JSON.stringify({ user_ids: userIds }) })
 export const listRecipients = (token, campaignId) => request(`/api/campaigns/${campaignId}/recipients`, { token })
-export const getDeliveryPreview = (token, campaignId) => request(`/api/campaigns/${campaignId}/delivery-preview`, { token })
+export const getCampaignQuizResults = (token, campaignId) => request(`/api/campaigns/${campaignId}/quiz-results`, { token })
+export const getDeliveryPreview =(token, campaignId) => request(`/api/campaigns/${campaignId}/delivery-preview`, { token })
 export const sendCampaignEmails = (token, campaignId, confirmation) => request(`/api/campaigns/${campaignId}/send`, { token, method: 'POST', body: JSON.stringify({ confirmation }) })
 
 export const predictUrl = (token, url) => request('/api/detection/predict', { token, method: 'POST', body: JSON.stringify({ url }) })

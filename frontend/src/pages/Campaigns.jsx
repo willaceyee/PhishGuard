@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import Icon from '../components/Icon.jsx'
 import {
   assignRecipients,
   createCampaign,
@@ -186,14 +187,23 @@ export default function Campaigns({ token, onDataChange }) {
     && delivery.delivery_enabled && delivery.public_url_safe && delivery.allowed_recipients.length > 0
     && (!isGmail || delivery.profile_ready) && !campaignLimitExceeded && !hourlyLimitExceeded
 
+  const blockers = delivery ? [
+    delivery.blocked_recipients.length > 0 && ['Delivery blocked', `Approve these recipients for simulation email on the Users page: ${delivery.blocked_recipients.map((user) => user.email).join(', ')}`],
+    !delivery.delivery_enabled && ['Delivery disabled', isGmail ? 'Enable email delivery in the server configuration before sending.' : 'Enable the local Mailpit configuration before sending.'],
+    isGmail && !delivery.profile_ready && ['Gmail profile not ready', 'Enable the Gmail profile and complete a successful connection test on the Sending profiles page.'],
+    !delivery.public_url_safe && ['Unsafe public URL', isGmail ? 'Use a public HTTPS URL, outside localhost, loopback, and private networks.' : 'Use HTTPS unless the tracking site is localhost.'],
+    delivery.allowed_recipients.length === 0 && ['No approved recipients remain', 'Assign approved recipients who have not already received this campaign.'],
+    campaignLimitExceeded && ['Campaign limit exceeded', `Reduce the recipient count to ${delivery.campaign_recipient_limit} or fewer before sending.`],
+    hourlyLimitExceeded && ['Hourly limit exceeded', `This send would exceed ${delivery.hourly_delivery_limit} successful emails in the rolling hour. Wait for earlier deliveries to leave the window.`],
+  ].filter(Boolean) : []
+
   return <section className="workspace-page">
     <div className="page-heading">
       <div>
-        <p className="eyebrow">Controlled simulation</p>
         <h1>Campaigns</h1>
         <p>Create a campaign, assign approved users, and preview delivery to local Mailpit or an enabled Gmail profile.</p>
       </div>
-      <span className="count-pill">{campaigns.length} campaigns</span>
+      <span className="count-pill">{campaigns.length} {campaigns.length === 1 ? 'campaign' : 'campaigns'}</span>
     </div>
     {error && <div className="dashboard-error" role="alert">{error}</div>}
     {notice && <div className="success-note" role="status">{notice}</div>}
@@ -212,7 +222,7 @@ export default function Campaigns({ token, onDataChange }) {
           <option value="">Mailpit — local test delivery</option>
           {profile?.enabled && profile.credential_configured && <option value={profile.profile_id}>Gmail — {profile.name} ({profile.from_email})</option>}
         </select>
-        {form.sending_profile_id && <div className="delivery-warning real-delivery-warning"><strong>Real email delivery</strong><p>Gmail sends real external email to approved recipients. Review the final safety checks before sending.</p></div>}
+        {form.sending_profile_id && <div className="delivery-warning real-delivery-warning"><Icon name="alert" size={18} /><div><strong>Real email delivery</strong><p>Gmail sends real external email to approved recipients. Review the final safety checks before sending.</p></div></div>}
         <label htmlFor="campaign-status">Status</label>
         <select id="campaign-status" value={form.status} onChange={(event) => setForm({ ...form, status: event.target.value })}>
           <option value="draft">Draft</option>
@@ -224,43 +234,57 @@ export default function Campaigns({ token, onDataChange }) {
       </form>
       <div className="list-card">
         <h2>Campaign list</h2>
-        {loading ? <p className="empty-state">Loading campaigns…</p> : campaigns.length === 0 ? <p className="empty-state">No campaigns yet.</p> : <div className="record-list">
+        {loading ? <p className="empty-state" role="status">Loading campaigns…</p> : campaigns.length === 0 ? <p className="empty-state">No campaigns yet.</p> : <div className="record-list">
           {campaigns.map((campaign) => <article className={`campaign-record ${selectedCampaign?.campaign_id === campaign.campaign_id ? 'selected' : ''}`} key={campaign.campaign_id}>
-            <div><span className="category-tag">{campaign.status}</span><h3>{campaign.campaign_name}</h3><small>Template #{campaign.template_id}</small></div>
+            <div><span className="category-tag">{campaign.status}</span><h3>{campaign.campaign_name}</h3><small>Template #{campaign.template_id}{campaign.delivery_method && ` · ${campaign.delivery_method === 'gmail' ? 'Gmail' : 'Mailpit'}`}</small></div>
             <div className="record-actions"><button className="small-button" onClick={() => openRecipients(campaign)}>Recipients & delivery</button><button className="danger-link" onClick={() => remove(campaign)}>Delete</button></div>
           </article>)}
         </div>}
       </div>
     </div>
     {selectedCampaign && <section className="panel assignment-panel">
-      <div className="panel-heading"><div><p className="eyebrow">Recipient assignment</p><h2>{selectedCampaign.campaign_name}</h2></div><span>{recipients.length} assigned</span></div>
+      <div className="panel-heading"><div><h2>{selectedCampaign.campaign_name}</h2><p className="panel-scope">Recipient assignment</p></div><span>{recipients.length} assigned</span></div>
       <div className="assignment-grid">
         <div>
           <h3>Select users</h3>
-          <div className="checkbox-list">{users.map((user) => <label key={user.user_id}><input type="checkbox" checked={selectedUsers.includes(user.user_id)} onChange={() => toggleUser(user.user_id)} /> <span><strong>{user.name}</strong><small>{user.email}</small></span></label>)}</div>
+          <div className="checkbox-list">{users.map((user) => <label key={user.user_id}><input type="checkbox" checked={selectedUsers.includes(user.user_id)} onChange={() => toggleUser(user.user_id)} /> <span><strong>{user.name}</strong><small>{user.email}{user.simulation_email_approved === false ? ' · email approval required' : ''}</small></span></label>)}</div>
           <button className="primary-button" type="button" onClick={assign} disabled={selectedUsers.length === 0}>Assign selected users</button>
         </div>
         <div>
           <h3>Tracking links</h3>
-          {recipients.length === 0 ? <p className="empty-state">No recipients assigned.</p> : <div className="link-list">{recipients.map((recipient) => <article key={recipient.recipient_id}><div><strong>{recipient.user.name}</strong><small>{recipient.user.email}</small><code>{recipient.tracking_url}</code></div><button className="small-button" onClick={() => copyLink(recipient.tracking_url)}>Copy link</button></article>)}</div>}
+          {recipients.length === 0 ? <p className="empty-state">No recipients assigned.</p> : <div className="link-list">{recipients.map((recipient) => <article key={recipient.recipient_id}><div><strong>{recipient.user.name}</strong><small>{recipient.user.email}</small><code>{recipient.tracking_url}</code></div><button className="small-button" onClick={() => copyLink(recipient.tracking_url)}><Icon name="copy" size={14} />Copy link</button></article>)}</div>}
         </div>
       </div>
       {delivery && <div className="delivery-review">
-        <div className="panel-heading"><div><p className="eyebrow">Final safety check</p><h2>Email delivery preview</h2></div><span>{delivery.already_delivered} previously delivered</span></div>
-        <p className="delivery-method">{isGmail ? 'Gmail — real external delivery' : 'Mailpit — local test delivery'}</p>
-        {isGmail && <div className="delivery-warning real-delivery-warning"><strong>Real email delivery</strong><p>Gmail sends real external email to approved recipients. Confirm that recipients can reach your public HTTPS deployment before sending.</p></div>}
+        <div className="panel-heading"><div><h2>Email delivery preview</h2><p className="panel-scope">Final safety check before sending</p></div><span>{delivery.already_delivered} previously delivered</span></div>
+        <div className="delivery-method-row">
+          <span className="quiz-note">Delivery method</span>
+          <p className={`delivery-method ${isGmail ? 'real' : ''}`}><Icon name={isGmail ? 'alert' : 'mail'} size={16} />{isGmail ? 'Gmail — real external delivery' : 'Mailpit — local test delivery'}</p>
+        </div>
+        {isGmail && <div className="delivery-warning real-delivery-warning"><Icon name="alert" size={18} /><div><strong>Real email delivery</strong><p>Gmail sends real external email to approved recipients. Confirm that recipients can reach your public HTTPS deployment before sending.</p></div></div>}
         <dl className="delivery-summary"><div><dt>From</dt><dd>{delivery.from}</dd></div><div><dt>Subject</dt><dd>{delivery.subject}</dd></div><div><dt>Allowlisted</dt><dd>{delivery.allowed_recipients.length}</dd></div><div><dt>Blocked</dt><dd>{delivery.blocked_recipients.length}</dd></div></dl>
         {isGmail && <dl className="delivery-summary"><div><dt>Campaign limit</dt><dd>{delivery.campaign_recipient_limit} recipients</dd></div><div><dt>Hourly limit</dt><dd>{delivery.hourly_delivery_limit} emails</dd></div><div><dt>Sent in the past hour</dt><dd>{delivery.hourly_delivered_count}</dd></div><div><dt>Gmail profile</dt><dd>{delivery.profile_ready ? 'Ready' : 'Not ready'}</dd></div></dl>}
-        {delivery.blocked_recipients.length > 0 && <div className="delivery-warning"><strong>Delivery blocked</strong><p>Approve these recipients for simulation email on the Users page: {delivery.blocked_recipients.map((user) => user.email).join(', ')}</p></div>}
-        {!delivery.delivery_enabled && <div className="delivery-warning"><strong>Delivery disabled</strong><p>{isGmail ? 'Enable email delivery in the server configuration before sending.' : 'Enable the local Mailpit configuration before sending.'}</p></div>}
-        {isGmail && !delivery.profile_ready && <div className="delivery-warning"><strong>Gmail profile not ready</strong><p>Enable the Gmail profile and complete a successful connection test on the Sending Profiles page.</p></div>}
-        {!delivery.public_url_safe && <div className="delivery-warning"><strong>Unsafe public URL</strong><p>{isGmail ? 'Use a public HTTPS URL, outside localhost, loopback, and private networks.' : 'Use HTTPS unless the tracking site is localhost.'}</p></div>}
-        {delivery.allowed_recipients.length === 0 && <div className="delivery-warning"><strong>No approved recipients remain</strong><p>Assign approved recipients who have not already received this campaign.</p></div>}
-        {campaignLimitExceeded && <div className="delivery-warning"><strong>Campaign limit exceeded</strong><p>Reduce the recipient count to {delivery.campaign_recipient_limit} or fewer before sending.</p></div>}
-        {hourlyLimitExceeded && <div className="delivery-warning"><strong>Hourly limit exceeded</strong><p>This send would exceed {delivery.hourly_delivery_limit} successful emails in the rolling hour. Wait for earlier deliveries to leave the window.</p></div>}
-        <label htmlFor="send-confirmation">Type <strong>{delivery.confirmation_phrase}</strong> to confirm</label>
-        <input id="send-confirmation" value={confirmation} onChange={(event) => setConfirmation(event.target.value)} autoComplete="off" />
-        <button className="primary-button" type="button" onClick={deliver} disabled={!canSend}>{sending ? 'Sending…' : isGmail ? 'Send real Gmail emails' : 'Send to local Mailpit'}</button>
+        <div className="delivery-columns">
+          <section className="delivery-section" aria-labelledby="approved-recipients-heading">
+            <h3 id="approved-recipients-heading">Approved recipients ({delivery.allowed_recipients.length})</h3>
+            {delivery.allowed_recipients.length === 0 ? <p className="quiz-note">None pending delivery.</p> : <ul className="recipient-list">{delivery.allowed_recipients.map((user) => <li key={user.user_id}><Icon name="check" size={15} />{user.email}</li>)}</ul>}
+          </section>
+          <section className="delivery-section" aria-labelledby="blocked-recipients-heading">
+            <h3 id="blocked-recipients-heading">Blocked recipients ({delivery.blocked_recipients.length})</h3>
+            {delivery.blocked_recipients.length === 0 ? <p className="quiz-note">None blocked.</p> : <ul className="recipient-list blocked">{delivery.blocked_recipients.map((user) => <li key={user.user_id}><Icon name="block" size={15} />{user.email}</li>)}</ul>}
+          </section>
+        </div>
+        <section className="delivery-checks" aria-label="Blocking reasons">
+          {blockers.length === 0
+            ? <p className="delivery-ready"><Icon name="check" size={16} />No blocking issues. Type the confirmation phrase to send.</p>
+            : blockers.map(([title, detail]) => <div className="delivery-warning blocking" key={title}><Icon name="block" size={18} /><div><strong>{title}</strong><p>{detail}</p></div></div>)}
+        </section>
+        <div className="confirm-box">
+          <h3>Confirm delivery</h3>
+          <label htmlFor="send-confirmation">Type <strong>{delivery.confirmation_phrase}</strong> to confirm</label>
+          <input id="send-confirmation" value={confirmation} onChange={(event) => setConfirmation(event.target.value)} autoComplete="off" />
+          <button className="primary-button" type="button" onClick={deliver} disabled={!canSend}>{sending ? 'Sending…' : isGmail ? 'Send real Gmail emails' : 'Send to local Mailpit'}</button>
+        </div>
       </div>}
     </section>}
   </section>

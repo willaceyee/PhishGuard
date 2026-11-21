@@ -81,11 +81,10 @@ export default function Templates({ token }) {
   return <section className="workspace-page">
     <div className="page-heading">
       <div>
-        <p className="eyebrow">Simulation content</p>
         <h1>Email templates</h1>
         <p>Create and maintain controlled messages without sending them from PhishGuard.</p>
       </div>
-      <span className="count-pill">{templates.length} templates</span>
+      <span className="count-pill">{templates.length} {templates.length === 1 ? 'template' : 'templates'}</span>
     </div>
     {error && <div className="dashboard-error" role="alert">{error}</div>}
     <div className="workspace-grid">
@@ -113,7 +112,7 @@ export default function Templates({ token }) {
       </form>
       <div className="list-card">
         <h2>Template library</h2>
-        {loading ? <p className="empty-state">Loading templates…</p> : templates.length === 0 ? <p className="empty-state">No templates yet.</p> : <div className="record-list">
+        {loading ? <p className="empty-state" role="status">Loading templates…</p> : templates.length === 0 ? <p className="empty-state">No templates yet.</p> : <div className="record-list">
           {templates.map((template) => <article className={`template-record ${editingId === template.template_id ? 'selected' : ''}`} key={template.template_id}>
             <div>
               <span className="category-tag">{template.category || 'general'}</span>
