@@ -1,6 +1,6 @@
 # Administrator Workspace Guide
 
-The React application exposes the backend modules through five sidebar pages.
+The React application exposes the backend modules through the top navigation: Overview, Users, Templates, Campaigns, Detection, and Sending profiles.
 
 ## Recommended operating sequence
 

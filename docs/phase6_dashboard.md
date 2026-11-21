@@ -64,10 +64,14 @@ The frontend now provides:
 - administrator login;
 - session-scoped JWT storage;
 - automatic logout when authorization expires;
-- summary metric cards;
-- responsive campaign and user-risk tables;
-- visual click-rate bars and risk bands;
-- refresh, loading, error, and empty states.
+- top navigation for Overview, Users, Templates, Campaigns, Detection, and Sending profiles, with an account menu for sign-out;
+- a summary row for campaigns, recipient assignments, clicks, training completion, and average quiz score, with denominators and scope labels (assignments are counted per campaign, so one person in two campaigns counts twice);
+- a risk distribution of people by High, Medium, and Low band across all campaigns;
+- campaign outcomes for a selected campaign: assigned, clicked, simulated submissions, and completed training as horizontal bars on a common count scale, plus that campaign's quiz scores from `GET /api/campaigns/<id>/quiz-results`;
+- coaching priorities ordered by risk score (0–100), each paired with its band label;
+- refresh, loading, error, and empty states, with zero kept distinct from "No results".
+
+On narrow screens the overview shows the summary and campaign outcomes first, then coaching priorities, then risk distribution.
 
 Run both services during development:
 
