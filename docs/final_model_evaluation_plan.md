@@ -256,16 +256,16 @@ a design influence rather than data overlap.
   - Each domain must be a registrable domain.
   - Ownership must be evidenced by an authoritative registry or directory, such
     as a national government domain registry or an accredited-institution list.
-  - Cover several sectors (for example government, education, health, finance,
-    transport/utilities, non-profit) and more than one country.
+  - Cover the six sectors (government, education, health, finance, transport and
+    utilities, non-profit) and more than one country.
   - Freeze the list before querying the index.
 - [ ] Run `preflight --official-domains …` first. Any allow-listed domain already
   seen in historical data (for example a domain in the Tranco training prefix)
   would be removed in cleaning, so replace it before collection.
-- [ ] Converter settings proposed in `test_sources.json`: `max_per_domain` 50 and
-  seed 42, fixed on approval. The evaluator then keeps at most 20 per domain, so
-  the allowlist needs at least 50 usable domains (aim for 60 or more across six or
-  more sectors). Full URLs, including paths and query strings, are kept. The report
+- [ ] Converter settings in `test_sources.json`: `max_per_domain` 50 and seed 42,
+  fixed on approval. The evaluator then keeps at most 20 per domain (see the
+  feasibility note in section 6.1). Full URLs, including paths and query strings,
+  are kept. The report
   shows the class balance; review the homepage-versus-path mix in the converted
   file before the final run.
 - [ ] `observed_at` = Common Crawl capture timestamp (all after the cutoff).
@@ -304,7 +304,7 @@ which selects by fixed rules rather than by hand:
 | Education | 20 | AU 18, US 2 |
 | Health | 20 | AU 14, US 6 |
 | Finance | 20 | US 20 |
-| Transport and utilities | 20 | US 20 |
+| Transport and utilities | 20 (3 transport, 17 utilities) | US 20 |
 | Non-profit | 20 | AU 20 |
 
 **Checks (2026-11-22).**
@@ -328,99 +328,195 @@ Registry snapshots are kept outside Git in `ml_model/data/final/registry/`.
 - **Health:** US hospital registers do not record official websites. Health
   domains are federal health agencies, local health districts on `.gov`, and
   Australian health and aged-care charities, rather than large hospitals.
-- **Transport:** the registry contains few transport agencies, so this sector is
-  mostly water and utility districts.
+- **Transport and utilities:** the sector was named "transport/utilities" in the
+  checklist approved with the protocol, so including utilities does not change the
+  approved protocol (`protocol.json` has no sector field). Because the `.gov`
+  registry holds many more utility districts than transport agencies, the seeded
+  draw gave 3 transport domains (a federal road-safety site, a county transport
+  authority, an airport authority) and 17 water, sanitation, and utility districts.
+  Transport is therefore thinly represented, and the report should say so.
 
 **Known biases.** 48 of the 120 domains end in `.gov`, and many organizations are
 small. The legitimate class is therefore less varied than general web browsing.
 The report should state this.
 
-**Feasibility of 1,000 legitimate URLs.**
+**Feasibility of the approved sizes.** The target is **1,000 usable URLs per
+class** after cleaning, with at most **20 per registrable domain** and an approved
+minimum of **500**.
 
-- The list can supply at most 120 × 20 = 2,400 URLs after the per-domain cap.
-- Reaching 1,000 needs at least 50 domains that each yield 20 usable pages in the
-  October crawl after cleaning.
-- That is plausible but cannot be confirmed without querying the crawl, which is
-  part of collection. Small sites may have few captured pages.
-- The converter's summary (`rows`, `domains_with_rows`) shows the yield before the
-  final run. If fewer than 1,000 survive, the approved rules sample the smaller
-  number, down to the 500 minimum, and the report states the achieved size.
+- URLs can be spread across the eligible domains in any proportion; no domain has
+  to reach 20. What matters is the total after each domain is capped at 20.
+- With 120 domains, 1,000 is reached when the capped total does, for example if
+  the domains average about 8.4 usable URLs each, or if 50 domains each reach the
+  cap of 20.
+- The list's ceiling is 120 × 20 = 2,400, comfortably above 1,000.
+- The actual yield is unknown until the crawl index is downloaded, which is part
+  of collection; small sites may contribute few pages. The download log and the
+  converter summary (`rows`, `domains_with_rows`) show the yield before the final
+  run.
+- If fewer than 1,000 usable URLs remain in the smaller class, the approved rules
+  sample that smaller number for both classes, provided it is at least 500; the
+  report states the achieved size. Below 500 the run stops.
+- The same 20-per-domain cap and 1,000 target apply to the phishing class.
 
 ### 6.2 PhishTank terms (checked 2026-11-22)
 
-| Source | What it says |
-| --- | --- |
-| [FAQ](https://phishtank.org/faq.php) | PhishTank is free to everyone, website and data. Commercial and non-commercial use of the **API** is allowed. The data is shared on the website and through the API. PhishTank is operated by Cisco Talos Intelligence Group. |
-| [Home page](https://phishtank.org/) | Offers an open API for developers and researchers at no charge. |
-| [Developer information](https://phishtank.org/developer_info.php) | Bulk files are updated hourly. Register for an application key for automated downloads; without one, only a few downloads per day are allowed. A descriptive User-Agent is required, recommended format `phishtank/<username>`. |
-| [API information](https://phishtank.org/api_info.php) | Rate limits apply (HTTP 509 when exceeded). Heavy users should download a local copy instead. |
-| Footer "Terms of Use" link ([Cisco General Terms](https://www.cisco.com/c/en/us/about/legal/cloud-and-software/end_user_license_agreement.html)) | A general licence for Cisco products. The 8-page text never mentions PhishTank or Talos, and has no clauses on data attribution, research use, or redistribution. |
+**What the official pages state explicitly.**
 
-**Resolved.** Free use for research is allowed; the FAQ and the home page state it.
+| Source | Statement |
+| --- | --- |
+| [FAQ](https://phishtank.org/faq.php) | PhishTank is free to everyone, "both the website and the data (via the API)". Asked whether the API may be used commercially and non-commercially, it answers "Yes, it is OK." It shares its phishing data on the website and through the API. PhishTank is operated by Cisco Talos Intelligence Group. |
+| [Home page](https://phishtank.org/) | Provides an open API for developers and researchers at no charge. |
+| [Developer information](https://phishtank.org/developer_info.php) | Publishes the bulk "online-valid" files (CSV, JSON, XML, PHP), updated hourly. Asks automated fetchers to register for an application key; without one, only a few downloads per day. Requires a descriptive User-Agent (`phishtank/<username>`). |
+| [API information](https://phishtank.org/api_info.php) | Rate limits on the URL-check API; heavy users are told to download a local copy of the database instead. |
+| Footer "Terms of Use" ([Cisco General Terms](https://www.cisco.com/c/en/us/about/legal/cloud-and-software/end_user_license_agreement.html)) | A general licence for Cisco products and services. It never mentions PhishTank or Talos. |
+
+**Interpretation (not stated by PhishTank).** The bulk file we intend to use is
+published on PhishTank's developer page, which offers it for download and gives
+instructions for fetching it, and the API page recommends downloading it instead of
+querying heavily. The FAQ says the data is free to everyone. It is therefore
+reasonable to read the free-use statements as covering the bulk file. But the
+explicit permission sentences mention the website and the API; **no page states
+in so many words that the bulk file may be used for research or how it may be
+shared.**
 
 **Unresolved.**
 
-- No attribution requirement is stated. As good practice, cite PhishTank (operated
-  by Cisco Talos) as the source.
-- Redistribution of the downloaded URL list is not addressed. Until PhishTank
-  confirms otherwise, publish only aggregate results and checksums, not the URLs.
-- The free-use statements name the API explicitly. Bulk files are offered on the
-  developer page with no separate licence.
+- Whether the free-use statement explicitly covers the bulk file.
+- Attribution: none is required by any page; we will cite PhishTank (operated by
+  Cisco Talos) as good practice.
+- Redistribution: not addressed. Until PhishTank confirms otherwise, publish only
+  aggregate results and checksums, not the URL list.
 
-Optional confirmation: [PhishTank contact page](https://www.phishtank.com/contact.php).
+**Draft message** for the [PhishTank contact page](https://www.phishtank.com/contact.php):
 
-## 7. Commands (PowerShell, from `backend`)
+> Subject: Research use of the online-valid bulk file
+>
+> Hello PhishTank team,
+>
+> I am a university student completing a capstone project that evaluates a
+> phishing URL classifier. I would like to download one snapshot of your
+> online-valid CSV (with a registered application key) and use it as the phishing
+> test set. Could you confirm that:
+>
+> 1. the free-use statement in your FAQ covers the bulk online-valid files, not
+>    only the API, for non-commercial academic research;
+> 2. whether you require any particular attribution; and
+> 3. whether I may share the list of URLs used, or only aggregate results.
+>
+> I plan to cite PhishTank (operated by Cisco Talos Intelligence Group) and, unless
+> you agree otherwise, to publish only aggregate metrics.
+>
+> Thank you.
+
+### 6.3 How a legitimate label is assigned
+
+Only Common Crawl **index records** are used: each record says a crawler fetched a
+URL at a given time and got a given response. The listed websites are never
+contacted. A record becomes a legitimate test URL only if every rule holds:
+
+1. **Domain match.** The URL's host is an allow-listed registrable domain or one of
+   its subdomains (for example `www.octa.gov` or `maps.octa.gov` for `octa.gov`).
+   The download asks the index only for that domain and its subdomains, and the
+   converter re-checks each record, so pages on any other domain are dropped
+   (`domain_not_allow_listed`).
+2. **Direct, successful page.** The capture returned HTTP status 200 with an HTML
+   type. **Redirects** (status 301, 302, 307, 308) are excluded: the download
+   requests status 200 only, and the converter re-checks. A redirect's destination
+   is never followed or assumed. It is included only if the crawler captured it
+   separately with status 200 *and* it is itself on an allow-listed domain. A
+   redirect from an official domain to an outside site therefore never yields a
+   legitimate label for the outside site.
+3. **Plain URL.** No login details before the host (`user@host`), no IP-address
+   host, no non-standard port.
+4. **Not contested.** The registrable domain does not appear in the PhishTank
+   snapshot downloaded for this test; if it does, the whole domain is dropped.
+5. **Date.** The capture time (5–18 October 2026) is after the cutoff.
+
+**Remaining labeling limits.**
+
+- A page that redirects inside the page itself (with scripts or a refresh tag)
+  still reports status 200 and cannot be detected from the index.
+- A subdomain run for the organization by an outside vendor is labelled
+  legitimate, because the organization controls its domain.
+- A compromised official page could carry a wrong label; the contested-domain rule
+  reduces but cannot remove this risk.
+
+## 7. Collection and run commands (PowerShell)
+
+**Do not run these until collection is authorized.** Run them from the evaluation
+folder, which holds the approved tools and verified copies of the model and
+historical files (all Git-ignored):
 
 ```powershell
-cd C:\Users\willa\Documents\PhishGuard\backend
-.\venv\Scripts\python.exe -m pip install -r requirements.txt
+cd C:\Users\willa\Documents\PhishGuard-evaluation\backend
+$py = "C:\Users\willa\Documents\PhishGuard\backend\venv\Scripts\python.exe"
 ```
 
-Before collection (no test data needed):
+**Step 0: readiness check (downloads nothing).** Expect `"ready_for_final_run": true`.
 
 ```powershell
-.\venv\Scripts\python.exe -m app.ml.final_evaluation preflight --official-domains ..\ml_model\final_evaluation\official_domains.csv
+& $py -m app.ml.final_evaluation preflight --official-domains ..\ml_model\final_evaluation\official_domains.csv
 ```
 
-After collection is authorized, convert the downloads:
+**Step 1: PhishTank snapshot.** Downloads one file, `online-valid.csv` (all
+currently online, verified phishing URLs, about 10–20 MB), to
+`ml_model\data\final\raw\online-valid.csv`. The key and username are typed when
+prompted so they are not saved in the command history. Write down the printed UTC
+time and SHA-256.
 
 ```powershell
-.\venv\Scripts\python.exe -m app.ml.final_evaluation convert-phishtank --input ..\ml_model\data\final\raw\online-valid.csv --output ..\ml_model\data\final\phishing.csv
+New-Item -ItemType Directory -Force ..\ml_model\data\final\raw | Out-Null
+$key = Read-Host "PhishTank application key"
+$user = Read-Host "PhishTank username"
+Invoke-WebRequest -Uri "https://data.phishtank.com/data/$key/online-valid.csv" -UserAgent "phishtank/$user" -OutFile ..\ml_model\data\final\raw\online-valid.csv
+(Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
+Get-FileHash ..\ml_model\data\final\raw\online-valid.csv -Algorithm SHA256
+```
+
+**Step 2: Common Crawl index records.** For each of the 120 domains, downloads the
+October 2026 crawl's index records (URL, capture time, status, type) for
+successful HTML captures, into `ml_model\data\final\raw\cc-index\<domain>.jsonl`,
+with a log of every request and checksum in `download_record.json`. It contacts
+only `index.commoncrawl.org`, pauses between requests, and can be re-run to resume.
+
+```powershell
+& $py ..\ml_model\final_evaluation\fetch_cc_index.py
+```
+
+**Step 3: record provenance** in `ml_model\final_evaluation\test_sources.json`:
+both download times, the PhishTank file and `download_record.json` with their
+SHA-256 under `raw_files`, and the Common Crawl `coverage_notes`.
+
+**Step 4: convert** to the evaluation format. Writes
+`ml_model\data\final\phishing.csv` and `ml_model\data\final\legitimate.csv`.
+
+```powershell
+& $py -m app.ml.final_evaluation convert-phishtank --input ..\ml_model\data\final\raw\online-valid.csv --output ..\ml_model\data\final\phishing.csv
 ```
 
 ```powershell
-.\venv\Scripts\python.exe -m app.ml.final_evaluation convert-common-crawl --index (Get-ChildItem ..\ml_model\data\final\raw\cc-index\*.jsonl).FullName --official-domains ..\ml_model\final_evaluation\official_domains.csv --phishing-feed ..\ml_model\data\final\raw\online-valid.csv --max-per-domain 50 --seed 42 --output ..\ml_model\data\final\legitimate.csv
+& $py -m app.ml.final_evaluation convert-common-crawl --index (Get-ChildItem ..\ml_model\data\final\raw\cc-index\*.jsonl).FullName --official-domains ..\ml_model\final_evaluation\official_domains.csv --phishing-feed ..\ml_model\data\final\raw\online-valid.csv --max-per-domain 50 --seed 42 --output ..\ml_model\data\final\legitimate.csv
 ```
 
-Validate the inputs (format and provenance only; no predictions):
+**Step 5: validate** (format and provenance only; no predictions).
 
 ```powershell
-.\venv\Scripts\python.exe -m app.ml.final_evaluation validate --dataset ..\ml_model\data\final\phishing.csv ..\ml_model\data\final\legitimate.csv
+& $py -m app.ml.final_evaluation validate --dataset ..\ml_model\data\final\phishing.csv ..\ml_model\data\final\legitimate.csv
 ```
 
-The single final run (after `preflight` reports `"ready_for_final_run": true`):
+**Step 6: commit the provenance metadata**, then wait for authorization of the
+final run.
+
+**Step 7: the single final run** (only after it is authorized):
 
 ```powershell
-.\venv\Scripts\python.exe -m app.ml.final_evaluation run --final --dataset ..\ml_model\data\final\phishing.csv ..\ml_model\data\final\legitimate.csv
+& $py -m app.ml.final_evaluation run --final --dataset ..\ml_model\data\final\phishing.csv ..\ml_model\data\final\legitimate.csv
 ```
 
-The report is written to
-`ml_model/artifacts/final_untouched_evaluation.json`. That path is
-fixed in final mode and is never overwritten, so a second final run is refused.
-
-Final mode refuses to run unless all of these hold:
-
-- the protocol is approved;
-- the working tree has no uncommitted tracked changes;
-- the model checksum, threshold, and feature order match;
-- the pinned Public Suffix List version is installed;
-- every historical source is verified or has a recorded out-of-scope decision;
-- every test source's metadata and raw-file checksums are recorded;
-- the input files have no malformed rows.
-
-`run --development-fixture --output <other path>` exercises the same pipeline on
-synthetic or previously seen data. Its report is marked
-`DEVELOPMENT FIXTURE RUN - NOT A FINAL RESULT`.
+The report is written once to
+`ml_model/artifacts/final_untouched_evaluation.json` in the evaluation folder and
+is never overwritten.
 
 ## 8. Decisions needed before collection
 
@@ -430,9 +526,10 @@ synthetic or previously seen data. Its report is marked
 3. **`_pre_raw` backup model:** an earlier raw-pipeline run (trained
    2026-08-31T14:48:41Z) left no metrics or input checksums. It is assumed to have
    used the same inputs; it is not the model being evaluated.
-4. ~~Permissions~~: PhishTank terms checked and domain ownership evidence recorded
-   (sections 6.1-6.2). Redistribution of PhishTank URL lists remains unconfirmed,
-   so only aggregate results are published.
+4. **Permissions:** domain ownership evidence is recorded (section 6.1). PhishTank's
+   pages do not explicitly cover the bulk file, attribution, or redistribution
+   (section 6.2); send the draft message, or proceed on the documented
+   interpretation and publish aggregate results only.
 5. **Approve the rules** in "Proposed evaluation rules" (cutoff, sources, label
    rule, 1,000/500 class sizes, 20 per domain) by setting `"approved": true` in
    `protocol.json` in a reviewed commit.
