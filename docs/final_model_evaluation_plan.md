@@ -277,6 +277,98 @@ a design influence rather than data overlap.
 - Commit only the protocol, the source metadata (with checksums), and, after the
   single final run, the report.
 
+### 6.1 Official-domain list (prepared 2026-11-22)
+
+[`official_domains.csv`](../ml_model/final_evaluation/official_domains.csv) holds
+**120 domains: 20 in each of the six sectors**, from two countries (68 US, 52 AU).
+It was produced by
+[`select_official_domains.py`](../ml_model/final_evaluation/select_official_domains.py),
+which selects by fixed rules rather than by hand:
+
+1. Filter each registry to the sector.
+2. Reduce each website to its registrable domain.
+3. Drop domains shared by several organizations and shared platforms (for example
+   social-media pages).
+4. Drop every domain already in the historical data.
+5. Order the rest by SHA-256 of `42:<sector>:<domain>` and keep 20 per sector.
+
+| Registry (ownership evidence) | Snapshot SHA-256 | Used for |
+| --- | --- | --- |
+| US `.gov` registry, CISA [`dotgov-data` `current-full.csv`](https://github.com/cisagov/dotgov-data/blob/fcdb786528f1a612295565ebd85ee56767ae5e65/current-full.csv), commit `fcdb7865` | `aa5f1a63…c6b3d44` | Government (state), transport and utilities (DOT and special districts), US health (HHS and health districts), US education (school districts) |
+| FDIC BankFind institutions API, index `institutions_20261120100008`, active banks with $1–50 billion assets | `474c3709…e43980` | Finance; each row links to the bank's own FDIC record |
+| ACNC Register of Australian charities (data.gov.au, updated 2026-11-15), Large charities | `559c2924…fef328d` | Australian education (`.edu.au` schools), health, and non-profit |
+
+| Sector | Domains | Countries |
+| --- | --- | --- |
+| Government | 20 | US 20 |
+| Education | 20 | AU 18, US 2 |
+| Health | 20 | AU 14, US 6 |
+| Finance | 20 | US 20 |
+| Transport and utilities | 20 | US 20 |
+| Non-profit | 20 | AU 20 |
+
+**Checks (2026-11-22).**
+
+- `preflight --official-domains` read all 120 domains and found **none** in the
+  historical data.
+- All 48 `.gov` domains are present in the pinned registry file.
+- All 20 banks were re-checked live at the FDIC: each record is active and states
+  the listed domain.
+- All 52 Australian domains match the website in the ACNC register, by ABN.
+
+Registry snapshots are kept outside Git in `ml_model/data/final/registry/`.
+
+**Where evidence is hard to obtain.**
+
+- **US non-profits:** the IRS register of tax-exempt organizations does not list
+  websites. Non-profits therefore come from Australia's ACNC, which does.
+- **US education:** the `.edu` registry publishes no ownership list, so US education
+  is limited to school districts on `.gov` (79 exist). Most education domains are
+  Australian schools on `.edu.au`.
+- **Health:** US hospital registers do not record official websites. Health
+  domains are federal health agencies, local health districts on `.gov`, and
+  Australian health and aged-care charities, rather than large hospitals.
+- **Transport:** the registry contains few transport agencies, so this sector is
+  mostly water and utility districts.
+
+**Known biases.** 48 of the 120 domains end in `.gov`, and many organizations are
+small. The legitimate class is therefore less varied than general web browsing.
+The report should state this.
+
+**Feasibility of 1,000 legitimate URLs.**
+
+- The list can supply at most 120 × 20 = 2,400 URLs after the per-domain cap.
+- Reaching 1,000 needs at least 50 domains that each yield 20 usable pages in the
+  October crawl after cleaning.
+- That is plausible but cannot be confirmed without querying the crawl, which is
+  part of collection. Small sites may have few captured pages.
+- The converter's summary (`rows`, `domains_with_rows`) shows the yield before the
+  final run. If fewer than 1,000 survive, the approved rules sample the smaller
+  number, down to the 500 minimum, and the report states the achieved size.
+
+### 6.2 PhishTank terms (checked 2026-11-22)
+
+| Source | What it says |
+| --- | --- |
+| [FAQ](https://phishtank.org/faq.php) | PhishTank is free to everyone, website and data. Commercial and non-commercial use of the **API** is allowed. The data is shared on the website and through the API. PhishTank is operated by Cisco Talos Intelligence Group. |
+| [Home page](https://phishtank.org/) | Offers an open API for developers and researchers at no charge. |
+| [Developer information](https://phishtank.org/developer_info.php) | Bulk files are updated hourly. Register for an application key for automated downloads; without one, only a few downloads per day are allowed. A descriptive User-Agent is required, recommended format `phishtank/<username>`. |
+| [API information](https://phishtank.org/api_info.php) | Rate limits apply (HTTP 509 when exceeded). Heavy users should download a local copy instead. |
+| Footer "Terms of Use" link ([Cisco General Terms](https://www.cisco.com/c/en/us/about/legal/cloud-and-software/end_user_license_agreement.html)) | A general licence for Cisco products. The 8-page text never mentions PhishTank or Talos, and has no clauses on data attribution, research use, or redistribution. |
+
+**Resolved.** Free use for research is allowed; the FAQ and the home page state it.
+
+**Unresolved.**
+
+- No attribution requirement is stated. As good practice, cite PhishTank (operated
+  by Cisco Talos) as the source.
+- Redistribution of the downloaded URL list is not addressed. Until PhishTank
+  confirms otherwise, publish only aggregate results and checksums, not the URLs.
+- The free-use statements name the API explicitly. Bulk files are offered on the
+  developer page with no separate licence.
+
+Optional confirmation: [PhishTank contact page](https://www.phishtank.com/contact.php).
+
 ## 7. Commands (PowerShell, from `backend`)
 
 ```powershell
@@ -338,8 +430,9 @@ synthetic or previously seen data. Its report is marked
 3. **`_pre_raw` backup model:** an earlier raw-pipeline run (trained
    2026-08-31T14:48:41Z) left no metrics or input checksums. It is assumed to have
    used the same inputs; it is not the model being evaluated.
-4. **Permissions:** establish PhishTank's terms and record each official domain's
-   ownership evidence (section 6).
+4. ~~Permissions~~: PhishTank terms checked and domain ownership evidence recorded
+   (sections 6.1-6.2). Redistribution of PhishTank URL lists remains unconfirmed,
+   so only aggregate results are published.
 5. **Approve the rules** in "Proposed evaluation rules" (cutoff, sources, label
    rule, 1,000/500 class sizes, 20 per domain) by setting `"approved": true` in
    `protocol.json` in a reviewed commit.
