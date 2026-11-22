@@ -8,7 +8,7 @@
       "access_url": "https://data.phishtank.com/data/online-valid.csv",
       "documentation_url": "https://phishtank.org/developer_info.php",
       "snapshot_downloaded_at_utc": null,
-      "terms": null,
+      "terms": "Checked 2026-11-22 (docs/final_model_evaluation_plan.md section 6.2): free to everyone; commercial and non-commercial API use allowed (https://phishtank.org/faq.php); open to researchers at no charge (https://phishtank.org/). Attribution and redistribution are not stated; the footer Terms of Use link is Cisco's general product terms, which do not mention PhishTank. Cite PhishTank; publish aggregates only, not the URL list.",
       "label_definition": "Phishing: listed in PhishTank's online-valid file (verified as a phish by the PhishTank community and online at snapshot time). observed_at is the per-row verification_time.",
       "timestamp_field": "verification_time",
       "sampling_rule": "All rows of one snapshot with verification_time after the cutoff, converted with convert-phishtank; then the protocol's cleaning and balanced sampling.",
@@ -24,10 +24,10 @@
       "terms": "Common Crawl Terms of Use, last updated 2024-03-07 (https://commoncrawl.org/terms-of-use): limited non-exclusive licence; crawled content may carry separate owner terms; no clause specifically covers redistributing URL lists.",
       "label_definition": "Legitimate: capture from CC-MAIN-2026-43 (crawled 2026-10-05 to 2026-10-18) whose host is an allow-listed official registrable domain (official_domains.csv) or its subdomain, HTTP 200, HTML MIME type, no userinfo/IP host/non-default port, and domain absent from the phishing snapshot. The crawl timestamp or a 200 response alone does not establish the label.",
       "timestamp_field": "Common Crawl capture timestamp",
-      "sampling_rule": "convert-common-crawl with the max-per-domain and seed recorded here before collection; then the protocol's cleaning and balanced sampling.",
+      "sampling_rule": "convert-common-crawl with max_per_domain 50 and seed 42 (headroom for duplicate removal); the evaluator then caps every class at 20 rows per registrable domain and samples at most 1,000 per class.",
       "coverage_notes": null,
-      "max_per_domain": null,
-      "converter_seed": null,
+      "max_per_domain": 50,
+      "converter_seed": 42,
       "raw_files": []
     }
   }

@@ -1,9 +1,27 @@
 {
   "format": "phishguard-final-evaluation-protocol/1",
-  "approved": false,
+  "approved": true,
+  "approval": {
+    "approved_by": "Project owner (willaceyee)",
+    "approved_at_utc": "2026-11-22T10:23:55Z",
+    "basis": "Approved as proposed in docs/final_model_evaluation_plan.md (Approved evaluation rules), including the 18-feature scope and the out-of-scope earlier dataset.",
+    "final_data_collected_before_approval": false
+  },
   "approval_rule": "Set approved to true only in a reviewed commit, before any final test data is downloaded. After the test set is opened, nothing in this file may change.",
   "cutoff_utc": "2026-09-01T00:00:00Z",
-  "cutoff_rationale": "Proposed. Latest earlier activity: raw-pipeline run generated 2026-08-31T14:53:06Z (raw_training_metrics.json); baseline run 2026-08-31T06:02:06Z; Tranco list entry dated 2026-08-30. Rows observed at or before the cutoff are removed.",
+  "cutoff_rationale": "Latest verification_time in the recovered PhishTank snapshot: 2026-08-31T02:02:21Z. Latest earlier run: raw-pipeline training generated 2026-08-31T14:53:06Z; baseline run 2026-08-31T06:02:06Z; Tranco list entry dated 2026-08-30. Rows observed at or before the cutoff are removed.",
+  "evaluation_scope": {
+    "model": "Current 18-feature raw-URL Random Forest (ml_model/artifacts/phishguard_url_model.joblib, SHA-256 below)",
+    "question": "How well does the current model separate phishing from legitimate URLs first verified or observed after the cutoff?",
+    "historical_coverage_rule": "Exclude every normalized URL and registrable domain from data that trained, validated, diagnosed, or baseline-tested the current model or its direct raw-pipeline predecessor.",
+    "excluded_historical_sources": [
+      {
+        "name": "precomputed_feature_dataset",
+        "reason": "Feature-only dataset with no URLs. It trained and random-split tested only the earlier 15-feature precomputed model (metrics.json). The current model was trained only on the PhishTank snapshot, the legitimate status archive, and Tranco homepages, as confirmed by exact reproduction of every recorded training count and validation/diagnostic metric (historical_reconstruction_evidence.json). Overlap of the final test with this dataset cannot be checked and remains unknown."
+      }
+    ],
+    "not_assessed": "The earlier 15-feature precomputed model. This evaluation makes no claim about it."
+  },
   "model": {
     "path": "ml_model/artifacts/phishguard_url_model.joblib",
     "sha256": "ac1dc5aac4d97333faea4bcf49a8323b55c49d9d7994db1a42f17c9f5cef9edc",
@@ -34,9 +52,11 @@
     "phishing": 1
   },
   "sampling": {
-    "method": "balanced_downsample: after cleaning, sort each class by normalized URL, then draw min(n_legitimate, n_phishing) rows from each class without replacement using random.Random(seed).sample (legitimate first, then phishing)",
+    "method": "after cleaning, keep at most max_per_registrable_domain rows per class and registrable domain (lowest SHA-256 of 'seed:normalized URL' first); then sort each class by normalized URL and draw min(n_legitimate, n_phishing, maximum_rows_per_class) rows from each class without replacement using random.Random(seed).sample (legitimate first, then phishing)",
     "seed": 42,
-    "minimum_rows_per_class": 100
+    "minimum_rows_per_class": 500,
+    "maximum_rows_per_class": 1000,
+    "max_per_registrable_domain": 20
   },
   "cleaning_rules_version": 1,
   "public_suffix_list": {
