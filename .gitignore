@@ -26,3 +26,4 @@ Thumbs.db
 *.pkl
 *.joblib
 ml_model/data/external/
+ml_model/data/final/
