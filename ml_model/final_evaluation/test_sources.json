@@ -24,10 +24,10 @@
       "terms": "Common Crawl Terms of Use, last updated 2024-03-07 (https://commoncrawl.org/terms-of-use): limited non-exclusive licence; crawled content may carry separate owner terms; no clause specifically covers redistributing URL lists.",
       "label_definition": "Legitimate: capture from CC-MAIN-2026-43 (crawled 2026-10-05 to 2026-10-18) whose host is an allow-listed official registrable domain (official_domains.csv) or its subdomain, HTTP 200, HTML MIME type, no userinfo/IP host/non-default port, and domain absent from the phishing snapshot. The crawl timestamp or a 200 response alone does not establish the label.",
       "timestamp_field": "Common Crawl capture timestamp",
-      "sampling_rule": "convert-common-crawl with the max-per-domain and seed recorded here before collection; then the protocol's cleaning and balanced sampling.",
+      "sampling_rule": "convert-common-crawl with max_per_domain 50 and seed 42 (headroom for duplicate removal); the evaluator then caps every class at 20 rows per registrable domain and samples at most 1,000 per class.",
       "coverage_notes": null,
-      "max_per_domain": null,
-      "converter_seed": null,
+      "max_per_domain": 50,
+      "converter_seed": 42,
       "raw_files": []
     }
   }

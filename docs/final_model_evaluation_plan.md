@@ -1,6 +1,6 @@
 # Final Untouched Model-Evaluation Plan
 
-Status: **tooling ready for review; data collection not authorized.** No final test
+Status: **historical sources recovered and verified; protocol awaiting approval; data collection not authorized.** No final test
 data has been collected or opened. "Model evaluation" remains unchecked in
 [`cp2_feature_checklist.md`](cp2_feature_checklist.md) until this plan has been
 carried out and its results recorded.
@@ -37,18 +37,43 @@ and the evaluator refuses to run if the local model differs.
 If the model file is lost or retrained, this record is no longer valid and the
 plan restarts with the new model.
 
+## Proposed evaluation rules (awaiting approval)
+
+| Rule | Proposal |
+| --- | --- |
+| Model tested | The current 18-feature Random Forest only (`phishguard_url_model.joblib`, SHA-256 `ac1dc5aa…5cef9edc`, threshold 0.5). The earlier 15-feature model is not assessed. |
+| Cutoff | `2026-09-01T00:00:00Z`. The newest earlier data point is a PhishTank verification at 2026-08-31T02:02:21Z, and the last earlier run finished at 2026-08-31T14:53:06Z. Only URLs verified or observed **after** the cutoff count. |
+| Phishing source | PhishTank's verified-online file (`online-valid.csv`), one snapshot; each URL's date is its PhishTank verification time. |
+| Legitimate source and label check | Common Crawl October 2026 crawl (`CC-MAIN-2026-43`, crawled 5–18 October 2026). A URL counts as legitimate only if its site is on a frozen list of official organization domains backed by an authoritative registry, the page returned HTTP 200 HTML, it has no login details, IP address, or unusual port in the URL, and its domain never appears in the phishing snapshot. A crawl date or a working page alone is not enough. |
+| Target size | Up to **1,000 URLs per class** after cleaning (equal numbers of each). The run stops if either class has fewer than **500**. |
+| Maximum per domain | **20 URLs per registrable domain** in each class (the converter collects up to 50 legitimate URLs per domain as headroom for duplicate removal). This stops one website or one phishing campaign from dominating the result and forces at least 50 different domains per class at full size. |
+| Overlap with old data | Before any prediction: remove exact and near-duplicate URLs; remove any URL, or any URL whose registrable domain, appears in the PhishTank snapshot, the legitimate archive, or the 36,966 Tranco homepages used in training; then remove URLs given both labels. Every removal is counted. |
+| Permissions still to verify | PhishTank's terms for academic use and publication (not stated on its developer page). Common Crawl's terms are recorded but do not specifically address republishing URL lists. Each official domain's ownership evidence. Until settled, URL lists are not published; only aggregate results are reported. |
+
+### What approval means
+
+Approving sets `"approved": true` in `protocol.json` in a reviewed commit. It fixes the
+model, cutoff, sources, label rule, cleaning rules, seed, class sizes, and per-domain
+cap above **before** any final data is downloaded, so none of them can be adjusted
+after seeing results.
+
+After approval: (1) you compile and freeze the official-domain list and run
+`preflight --official-domains` to replace any domain already seen in old data;
+(2) download one PhishTank snapshot and the Common Crawl index records, recording
+download times, checksums, and terms in `test_sources.json`; (3) convert and
+`validate` the files; (4) commit the metadata; (5) run `run --final` exactly once.
+The report is written once and is never overwritten. If anything in the rules must
+change after the test data is opened, the result is discarded and the process
+restarts with new data collected after a new cutoff.
+
 ## 2. Cutoff
 
 **Proposed: `2026-09-01T00:00:00Z`** (not yet approved).
 
-- The latest recorded activity on earlier data is the raw-pipeline run generated
-  at 2026-08-31T14:53:06Z. The baseline run was generated at
-  2026-08-31T06:02:06Z, and the Tranco archive entry is dated 2026-08-30. The
-  PhishTank snapshot was used in both runs, so it cannot contain entries verified
-  after them.
-- The PhishTank snapshot file itself is not on this machine, so its latest
-  `verification_time` has not been read directly. Confirm it once the file is
-  supplied (the historical-source check will read it).
+- The recovered PhishTank snapshot's latest `verification_time` is
+  **2026-08-31T02:02:21Z**. The raw-pipeline run was generated at
+  2026-08-31T14:53:06Z and the baseline run at 2026-08-31T06:02:06Z; the Tranco
+  archive entry is dated 2026-08-30. The cutoff is later than all of them.
 - A row is kept only if its `observed_at` is **strictly after** the cutoff. Rows
   at or before the cutoff are removed and counted.
 - **PhishVN v5** (November 2026 release) is excluded: it reuses August 2026 data
@@ -97,37 +122,88 @@ In final mode, any malformed row stops the run (fix the file and validate again)
 5. **Conflicting labels.** Normalized URLs observed with both labels are removed
    from both classes. This includes a URL hidden behind a near-duplicate
    representative.
-6. **Balanced sampling.** Each class is sorted by normalized URL, then
-   `min(n_legitimate, n_phishing)` rows are drawn from each with
+6. **Per-domain cap.** At most 20 rows per class and registrable domain are kept,
+   chosen by the lowest SHA-256 of `42:<normalized URL>` (deterministic).
+7. **Balanced sampling.** Each class is sorted by normalized URL, then
+   `min(n_legitimate, n_phishing, 1000)` rows are drawn from each with
    `random.Random(42).sample`. The run fails if either class is empty, or below
-   the protocol minimum (100 rows per class), after cleaning.
+   the protocol minimum (500 rows per class), after cleaning.
 
 ## 5. Historical sources (overlap exclusion)
 
 Listed in
 [`ml_model/final_evaluation/historical_sources.json`](../ml_model/final_evaluation/historical_sources.json).
 Each raw file is verified against the SHA-256 recorded in the earlier metrics.
-Final mode **refuses to run** unless every source is verified or carries a
-recorded out-of-scope decision. It never reports the holdout as disjoint on the
-basis of a partial check.
+Final mode refuses to run unless every source is verified or excluded by a scope
+decision that is also recorded in `protocol.json`. Raw files stay outside Git in
+`ml_model/data/external/`.
 
-| Source | Used by | Status on this machine |
+| Source | Used by | Status (2026-11-22) |
 | --- | --- | --- |
-| PhishTank-format snapshot `a55aa3b2…52240` | Baseline (B) and raw training, validation, diagnostic (C) | **Missing.** Place it at `ml_model/data/external/phishtank_snapshot_2026_08.csv` (or edit the path). |
-| Legitimate `url,status` archive `3b888fbf…390ce` | B and C | **Missing.** Place it at `ml_model/data/external/legitimate_status_archive.zip`. |
-| `tranco_5674N.zip` `6ef97b32…a24e4` | C (36,966 homepages: 34,138 / 2,285 / 543) | Present. Rebuilding exactly which entries were used needs the PhishTank snapshot. The split sizes are checked against the recorded run. |
-| `Phishing_Legitimate_full.csv` `204c226d…a8900` | A (earlier 15-feature model) | Present, but has **no URL column**, so overlap cannot be checked. Needs a decision (see section 8). |
-| Synthetic demo fixture | Pipeline fixture and tests | Regenerated deterministically (`generate_demo_rows(300, seed=42)`). |
+| PhishTank snapshot `a55aa3b2…52240` (recovered from `verified_online.csv`) | Baseline (B) and raw training, validation, diagnostic (C) | **Verified**: 73,945 rows, latest verification 2026-08-31T02:02:21Z |
+| Legitimate `url,status` archive `3b888fbf…390ce` (recovered from `new_data_urls.csv.zip`) | B and C | **Verified**: 822,010 rows |
+| `tranco_5674N.zip` `6ef97b32…a24e4` | C | **Verified**: the 36,966 homepages used in training, rebuilt exactly |
+| `Phishing_Legitimate_full.csv` `204c226d…a8900` | A (earlier 15-feature model only) | **Out of scope (proposed)**: no URL column; see section 5.2 |
+| Synthetic demo fixture | Pipeline fixture and tests | Verified (regenerated deterministically) |
 
 Each historical file is checked in full (all rows, regardless of status or
-verified/online flags), except Tranco. For Tranco, only the homepages
-`app.ml.retrain_raw` actually drew are checked: excluding the whole top-1M list
-would remove nearly every official domain.
+verified/online flags), except Tranco, where only the homepages
+`app.ml.retrain_raw` actually drew are checked; excluding the whole top-1M list
+would remove nearly every official domain. Rows that cannot be parsed as URLs
+(7 PhishTank, 1,866 archive) were confirmed not to have been usable for training.
 
-If a raw file must stay on another machine, run `build-exclusions` there. Copy the
-resulting JSON (normalized URLs, registrable domains, hosts, and templates,
-bound to the source's checksum) and record its SHA-256 under that source's
-`exclusion_list` entry.
+`Downloads\Phishing.csv` (SHA-256 `99c732ba…`) was offered as the PhishTank file
+but is a different, feature-only dataset not referenced by any recorded result; it
+is not used.
+
+### 5.1 Reconstruction evidence
+
+The training, validation, and diagnostic URL sets were rebuilt with
+`app.ml.retrain_raw` (same dates and seed 42) from the recovered files, and the
+frozen model was scored on validation and diagnostic. All **23** recorded values
+in `raw_training_metrics.json` were reproduced exactly
+([`historical_reconstruction_evidence.json`](../ml_model/final_evaluation/historical_reconstruction_evidence.json)):
+
+| Item | Rebuilt = recorded |
+| --- | --- |
+| Source checksums (PhishTank, archive, Tranco) | all three match |
+| Rejected rows | PhishTank 12, archive 235 |
+| Training rows | 136,550 (68,275 phishing; 34,137 archive + 34,138 Tranco legitimate) |
+| Validation (9,138 rows) | `[[4302, 267], [837, 3732]]`, accuracy 0.879186, ROC-AUC 0.955051, PR-AUC 0.959678, full per-class report |
+| Diagnostic (2,172 rows) | `[[1028, 58], [226, 860]]`, accuracy 0.869245, ROC-AUC 0.952746, PR-AUC 0.957893, full per-class report |
+
+**What this shows.** It is strong supporting evidence that the rebuilt sets are
+the sets used. ROC-AUC to six decimals depends on how the model ranks every one of
+the 2,172 diagnostic and 9,138 validation URLs, so a different set of URLs is very
+unlikely to reproduce all of these values together.
+
+**What it cannot prove.** Exact row identity cannot be verified: the original run
+saved no list or fingerprint of the URLs in each split, `retrain_raw.py` was only
+committed on 2026-10-06 (after the 2026-08-31 run), and a trained model does not
+contain its training URLs. The training split itself is not scored, so its
+membership rests on matching counts and on the identical deterministic code that
+produced the validation and diagnostic matches.
+
+### 5.2 Scope: the earlier 15-feature dataset
+
+This evaluation is defined as an assessment of the **current 18-feature model**
+(`protocol.json` → `evaluation_scope`). Its historical coverage rule is: exclude
+everything that trained, validated, diagnosed, or baseline-tested this model or
+its direct raw-pipeline predecessor.
+
+`Phishing_Legitimate_full.csv` falls outside that rule: it contains only
+precomputed feature columns and trained and tested only the earlier 15-feature
+model. The reconstruction above confirms the current model's 136,550 training rows
+all came from the three verified raw sources. It is therefore proposed as **out of
+scope**, recorded in both `protocol.json` (with its reason) and the manifest. The
+tool accepts the exclusion only when both agree, and the report states it.
+
+**Remaining limitation.** The dataset's URLs cannot be recovered, so overlap
+between the final test and that dataset is unknown. This cannot leak into the
+current model's training, but the report's disjointness statement names this
+source as unchecked, and the result says nothing about the earlier model. The
+earlier dataset also shaped early feature design (the first 15 features), which is
+a design influence rather than data overlap.
 
 ## 6. Data acquisition checklist (complete before collection)
 
@@ -186,8 +262,10 @@ bound to the source's checksum) and record its SHA-256 under that source's
 - [ ] Run `preflight --official-domains …` first. Any allow-listed domain already
   seen in historical data (for example a domain in the Tranco training prefix)
   would be removed in cleaning, so replace it before collection.
-- [ ] Fix `max_per_domain` and the converter seed in `test_sources.json` before
-  collection. Full URLs, including paths and query strings, are kept. The report
+- [ ] Converter settings proposed in `test_sources.json`: `max_per_domain` 50 and
+  seed 42, fixed on approval. The evaluator then keeps at most 20 per domain, so
+  the allowlist needs at least 50 usable domains (aim for 60 or more across six or
+  more sectors). Full URLs, including paths and query strings, are kept. The report
   shows the class balance; review the homepage-versus-path mix in the converted
   file before the final run.
 - [ ] `observed_at` = Common Crawl capture timestamp (all after the cutoff).
@@ -219,7 +297,7 @@ After collection is authorized, convert the downloads:
 ```
 
 ```powershell
-.\venv\Scripts\python.exe -m app.ml.final_evaluation convert-common-crawl --index (Get-ChildItem ..\ml_model\data\final\raw\cc-index\*.jsonl).FullName --official-domains ..\ml_model\final_evaluation\official_domains.csv --phishing-feed ..\ml_model\data\final\raw\online-valid.csv --max-per-domain <N> --seed <S> --output ..\ml_model\data\final\legitimate.csv
+.\venv\Scripts\python.exe -m app.ml.final_evaluation convert-common-crawl --index (Get-ChildItem ..\ml_model\data\final\raw\cc-index\*.jsonl).FullName --official-domains ..\ml_model\final_evaluation\official_domains.csv --phishing-feed ..\ml_model\data\final\raw\online-valid.csv --max-per-domain 50 --seed 42 --output ..\ml_model\data\final\legitimate.csv
 ```
 
 Validate the inputs (format and provenance only; no predictions):
@@ -254,20 +332,16 @@ synthetic or previously seen data. Its report is marked
 
 ## 8. Decisions needed before collection
 
-1. **Historical files:** supply the PhishTank snapshot (`a55aa3b2…`) and the
-   legitimate archive (`3b888fbf…`), or exclusion lists derived from them.
-2. **`Phishing_Legitimate_full.csv`:** this source has no URLs. Supply its
-   original URL list, or record in a reviewed commit that it is out of scope. It
-   trained only the earlier 15-feature model. To do so, change its manifest entry
-   to `"format": "out_of_scope"` with a `"decision"`. The report then lists it as
-   unchecked by decision.
+1. ~~Historical files~~: recovered and verified (section 5).
+2. **Scope of the older dataset:** approve or reject the out-of-scope proposal for
+   `Phishing_Legitimate_full.csv` (section 5.2).
 3. **`_pre_raw` backup model:** an earlier raw-pipeline run (trained
    2026-08-31T14:48:41Z) left no metrics or input checksums. It is assumed to have
-   used the same three input files. Confirm this, or record it as a known gap.
-4. **PhishTank terms:** establish them (section 6).
-5. **Allowlist, `max_per_domain`, converter seed, and the 100-row minimum per
-   class:** fix them before collection.
-6. **Approve the cutoff and protocol:** set `"approved": true` in
+   used the same inputs; it is not the model being evaluated.
+4. **Permissions:** establish PhishTank's terms and record each official domain's
+   ownership evidence (section 6).
+5. **Approve the rules** in "Proposed evaluation rules" (cutoff, sources, label
+   rule, 1,000/500 class sizes, 20 per domain) by setting `"approved": true` in
    `protocol.json` in a reviewed commit.
 
 ## 9. Test procedure
