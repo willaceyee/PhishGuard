@@ -1,0 +1,34 @@
+{
+  "format": "phishguard-final-test-sources/1",
+  "description": "Provenance for each value of the dataset's source column. null fields must be recorded at collection time; final mode refuses to run while any field is null or a raw file checksum does not match.",
+  "sources": {
+    "phishtank_verified_online": {
+      "label": "phishing",
+      "publisher": "PhishTank, operated by Cisco Talos Intelligence Group",
+      "access_url": "https://data.phishtank.com/data/online-valid.csv",
+      "documentation_url": "https://phishtank.org/developer_info.php",
+      "snapshot_downloaded_at_utc": null,
+      "terms": null,
+      "label_definition": "Phishing: listed in PhishTank's online-valid file (verified as a phish by the PhishTank community and online at snapshot time). observed_at is the per-row verification_time.",
+      "timestamp_field": "verification_time",
+      "sampling_rule": "All rows of one snapshot with verification_time after the cutoff, converted with convert-phishtank; then the protocol's cleaning and balanced sampling.",
+      "coverage_notes": "Online-only: phishes taken down before the snapshot are absent, so short-lived campaigns are under-represented. Community-submitted, English-language and brand-concentrated coverage.",
+      "raw_files": []
+    },
+    "commoncrawl_cc_main_2026_43_official": {
+      "label": "legitimate",
+      "publisher": "Common Crawl Foundation",
+      "access_url": "https://data.commoncrawl.org/crawl-data/CC-MAIN-2026-43/cc-index.paths.gz",
+      "documentation_url": "https://www.commoncrawl.org/blog/october-2026-crawl-archive-now-available",
+      "snapshot_downloaded_at_utc": null,
+      "terms": "Common Crawl Terms of Use, last updated 2024-03-07 (https://commoncrawl.org/terms-of-use): limited non-exclusive licence; crawled content may carry separate owner terms; no clause specifically covers redistributing URL lists.",
+      "label_definition": "Legitimate: capture from CC-MAIN-2026-43 (crawled 2026-10-05 to 2026-10-18) whose host is an allow-listed official registrable domain (official_domains.csv) or its subdomain, HTTP 200, HTML MIME type, no userinfo/IP host/non-default port, and domain absent from the phishing snapshot. The crawl timestamp or a 200 response alone does not establish the label.",
+      "timestamp_field": "Common Crawl capture timestamp",
+      "sampling_rule": "convert-common-crawl with the max-per-domain and seed recorded here before collection; then the protocol's cleaning and balanced sampling.",
+      "coverage_notes": null,
+      "max_per_domain": null,
+      "converter_seed": null,
+      "raw_files": []
+    }
+  }
+}

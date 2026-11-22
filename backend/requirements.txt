@@ -11,3 +11,4 @@ shap==0.52.0
 joblib==1.5.3
 numpy==2.4.6
 pytest-cov==7.1.0
+publicsuffixlist==1.1.2.20261107
