@@ -4,7 +4,8 @@ Phase 5 implements an offline phishing URL classifier using lexical URL features
 
 > **Evaluation status:** Final model evaluation is **not complete**. None of the
 > results below come from a final untouched test set. The plan for that test is
-> in [`final_model_evaluation_plan.md`](final_model_evaluation_plan.md).
+> in [`final_model_evaluation_plan.md`](final_model_evaluation_plan.md); its tooling is
+> `python -m app.ml.final_evaluation` (the historical `app.ml.evaluate` baseline command is unchanged).
 
 ## Safety boundary
 
@@ -92,6 +93,8 @@ defaults:
 - `app.ml.retrain_raw` writes the model, `_candidate` and `_pre_raw` backups, and
   `raw_training_metrics.json`.
 - `app.ml.evaluate` writes `unseen_evaluation.json`.
+- `app.ml.final_evaluation run --final` writes `final_untouched_evaluation.json` once and
+  refuses to overwrite it; development runs must pass a different `--output`.
 
 Always pass explicit `--model`, `--metrics`, or `--output` paths when
 experimenting. The `.joblib` files are ignored by Git and exist only in local

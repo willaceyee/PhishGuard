@@ -1,0 +1,53 @@
+{
+  "format": "phishguard-final-evaluation-protocol/1",
+  "approved": false,
+  "approval_rule": "Set approved to true only in a reviewed commit, before any final test data is downloaded. After the test set is opened, nothing in this file may change.",
+  "cutoff_utc": "2026-09-01T00:00:00Z",
+  "cutoff_rationale": "Proposed. Latest earlier activity: raw-pipeline run generated 2026-08-31T14:53:06Z (raw_training_metrics.json); baseline run 2026-08-31T06:02:06Z; Tranco list entry dated 2026-08-30. Rows observed at or before the cutoff are removed.",
+  "model": {
+    "path": "ml_model/artifacts/phishguard_url_model.joblib",
+    "sha256": "ac1dc5aac4d97333faea4bcf49a8323b55c49d9d7994db1a42f17c9f5cef9edc",
+    "threshold": 0.5,
+    "feature_names": [
+      "url_length",
+      "hostname_length",
+      "path_length",
+      "query_length",
+      "digit_count",
+      "dot_count",
+      "hyphen_count",
+      "at_count",
+      "percent_count",
+      "subdomain_count",
+      "path_depth",
+      "query_parameter_count",
+      "suspicious_keyword_count",
+      "has_ip_hostname",
+      "has_explicit_port",
+      "has_punycode",
+      "uses_known_shortener",
+      "url_entropy"
+    ]
+  },
+  "labels": {
+    "legitimate": 0,
+    "phishing": 1
+  },
+  "sampling": {
+    "method": "balanced_downsample: after cleaning, sort each class by normalized URL, then draw min(n_legitimate, n_phishing) rows from each class without replacement using random.Random(seed).sample (legitimate first, then phishing)",
+    "seed": 42,
+    "minimum_rows_per_class": 100
+  },
+  "cleaning_rules_version": 1,
+  "public_suffix_list": {
+    "package": "publicsuffixlist",
+    "version": "1.1.2.20261107",
+    "private_suffixes": true
+  },
+  "excluded_candidate_sources": [
+    {
+      "name": "PhishVN v5 (November 2026 release)",
+      "reason": "Reuses August 2026 data, which is at or before the cutoff; not a temporal holdout."
+    }
+  ]
+}
