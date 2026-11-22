@@ -18,6 +18,7 @@ import argparse
 import csv
 import hashlib
 import json
+import ssl
 import time
 import urllib.error
 import urllib.parse
@@ -33,6 +34,14 @@ FIELDS = "url,timestamp,status,mime,mime-detected,digest"
 USER_AGENT = "PhishGuard-capstone-evaluation/1.0 (academic research; index lookup only)"
 DELAY_SECONDS = 2.0
 
+try:
+    # Use certifi's current CA bundle when installed: some Windows certificate stores
+    # hold an expired root that makes verification fail. Verification stays on.
+    import certifi
+    SSL_CONTEXT = ssl.create_default_context(cafile=certifi.where())
+except ImportError:
+    SSL_CONTEXT = ssl.create_default_context()
+
 
 def query(domain, **extra):
     params = [("url", domain), ("matchType", "domain"), ("output", "json"), ("fl", FIELDS),
@@ -44,7 +53,7 @@ def fetch(url, attempts=5):
     for attempt in range(attempts):
         request = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
         try:
-            with urllib.request.urlopen(request, timeout=120) as response:
+            with urllib.request.urlopen(request, timeout=120, context=SSL_CONTEXT) as response:
                 return response.read().decode("utf-8")
         except urllib.error.HTTPError as error:
             if error.code == 404:  # no captures for this domain
