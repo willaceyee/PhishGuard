@@ -554,3 +554,76 @@ def test_cli_commands(tmp_path, model_path, capsys):
     index.write_text(json.dumps({"url": "https://oldsite.org/a", "timestamp": "20261010000000", "status": "200", "mime": "text/html"}), encoding="utf-8")
     assert fe.main(["convert-common-crawl", "--index", str(index), "--official-domains", str(tmp_path / "od.csv"),
                     "--output", str(tmp_path / "cc.csv"), "--max-per-domain", "5", "--seed", "1"]) == 0
+
+
+# --------------------------------------------------------------------------- scope and sampling limits
+
+
+def test_scope_must_match_between_protocol_and_manifest(tmp_path, model_path, monkeypatch):
+    excluded = {"name": "older_features", "format": "out_of_scope", "decision": "Trained only the earlier model."}
+    index = fe.load_historical_index(manifest(tmp_path, [excluded], "scoped.json"))
+    with_scope = {"evaluation_scope": {"excluded_historical_sources": [{"name": "older_features", "reason": "earlier model only"}]}}
+    assert fe.check_scope(with_scope, index) == []
+    assert fe.check_scope({}, index) == ["older_features is out of scope in the manifest but not excluded in protocol.json"]
+    clean_index = fe.load_historical_index(manifest(tmp_path))
+    assert fe.check_scope(with_scope, clean_index) == [
+        "protocol.json excludes older_features, but the manifest does not mark it out of scope"]
+    no_reason = {"evaluation_scope": {"excluded_historical_sources": [{"name": "older_features", "reason": " "}]}}
+    assert fe.check_scope(no_reason, index) == ["protocol.json gives no reason for excluding older_features"]
+    assert "Not checked, by recorded scope decision: older_features" in fe.overlap_statement(index)
+    assert fe.overlap_statement(clean_index).startswith("Disjoint") and "scope" not in fe.overlap_statement(clean_index)
+
+    report_path = tmp_path / "artifacts" / "final.json"
+    monkeypatch.setattr(fe, "DEFAULT_REPORT", report_path)
+    monkeypatch.setattr(fe, "git_state", lambda: {"commit": "abc123", "tracked_changes": []})
+    data = dataset(tmp_path, fixture_rows())
+    scoped_manifest = tmp_path / "scoped.json"
+    with pytest.raises(fe.FinalEvaluationError, match="scope is inconsistent"):
+        fe.run_evaluation(data, report_path, True, protocol(tmp_path, model_path), manifest_path=scoped_manifest,
+                          sources_path=source_metadata(tmp_path), now=NOW)
+    proto = protocol(tmp_path, model_path)
+    write_json(proto, {**json.loads(proto.read_text(encoding="utf-8")), **with_scope})
+    report = fe.run_evaluation(data, report_path, True, proto, manifest_path=scoped_manifest,
+                               sources_path=source_metadata(tmp_path), now=NOW)
+    assert report["evaluation_scope"] == with_scope["evaluation_scope"]
+    assert report["overlap_check"]["out_of_scope_sources"][0]["name"] == "older_features"
+    assert "older_features" in report["overlap_check"]["statement"]
+
+    result = fe.preflight(protocol(tmp_path, model_path, approved=False), scoped_manifest, model_path=model_path)
+    assert "scope: older_features is out of scope in the manifest but not excluded in protocol.json" in result["blockers"]
+
+
+def test_per_domain_cap_and_class_maximum(tmp_path, model_path):
+    rows = [[f"https://www.big.example.org/page/{name}", "legitimate", "official", "2026-10-02T00:00:00Z"]
+            for name in ("alpha", "beta", "gamma", "delta", "epsilon")]
+    rows += [[f"https://site{i}.org/home", "legitimate", "official", "2026-10-02T00:00:00Z"] for i in range(3)]
+    rows += [[f"http://campaign.bad.test/{name}/login", "phishing", "feed", "2026-10-02T00:00:00Z"]
+             for name in ("a", "b", "c", "d")]
+    rows += [[f"http://p{i}.evil{i}.test/x", "phishing", "feed", "2026-10-02T00:00:00Z"] for i in range(4)]
+    index = fe.load_historical_index(manifest(tmp_path))
+    parsed, early, errors = fe.read_dataset(dataset(tmp_path, rows), fe.parse_utc(CUTOFF), NOW)
+    cleaned, steps, _ = fe.clean_dataset(parsed, early, errors, index, max_per_domain=2, seed=42)
+    cap = step(steps, "per_domain_cap")
+    assert cap["max_per_registrable_domain"] == 2
+    assert cap["removed"]["by_class"] == {"legitimate": 3, "phishing": 2}
+    per_domain = {}
+    for row in cleaned:
+        per_domain[(row.label, row.keys.domain)] = per_domain.get((row.label, row.keys.domain), 0) + 1
+    assert max(per_domain.values()) == 2
+    again, _, _ = fe.clean_dataset(*fe.read_dataset(dataset(tmp_path, rows, "again.csv"), fe.parse_utc(CUTOFF), NOW),
+                                   index, max_per_domain=2, seed=42)
+    assert sorted(r.keys.normalized for r in again) == sorted(r.keys.normalized for r in cleaned)
+    sample, size = fe.sample_balanced(cleaned, 42, 1, maximum=3)
+    assert size == 3 and len(sample) == 6
+    assert fe.sample_balanced(cleaned, 42, 1)[1] == 5
+
+    output = tmp_path / "capped.json"
+    proto = protocol(tmp_path, model_path)
+    data = json.loads(proto.read_text(encoding="utf-8"))
+    data["sampling"].update({"maximum_rows_per_class": 10, "max_per_registrable_domain": 20})
+    write_json(proto, data)
+    report = fe.run_evaluation(dataset(tmp_path, fixture_rows(), "cap.csv"), output, False, proto,
+                               manifest_path=manifest(tmp_path), sources_path=source_metadata(tmp_path), now=NOW)
+    assert report["class_balance"]["evaluated"] == {"legitimate": 10, "phishing": 10}
+    assert report["protocol"]["maximum_rows_per_class"] == 10
+    assert step(report["cleaning_steps"], "per_domain_cap")["removed"]["total"] == 0

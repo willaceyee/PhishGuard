@@ -488,6 +488,34 @@ class HistoricalIndex:
         return [source for source in self.sources if source.status == "out_of_scope"]
 
 
+def check_scope(protocol, index):
+    """Every out-of-scope historical source must be named, with a reason, in the
+    protocol's evaluation_scope, and every protocol exclusion must be out of scope
+    in the manifest. Returns a list of problems (empty when consistent)."""
+    excluded = {
+        entry["name"]: (entry.get("reason") or "").strip()
+        for entry in (protocol.get("evaluation_scope") or {}).get("excluded_historical_sources", [])
+    }
+    marked = {source.name for source in index.out_of_scope}
+    problems = [f"{name} is out of scope in the manifest but not excluded in protocol.json" for name in sorted(marked - set(excluded))]
+    problems += [f"protocol.json excludes {name}, but the manifest does not mark it out of scope" for name in sorted(set(excluded) - marked)]
+    problems += [f"protocol.json gives no reason for excluding {name}" for name, reason in sorted(excluded.items()) if not reason]
+    return problems
+
+
+def overlap_statement(index):
+    if index.gaps:
+        return "NOT fully checked: overlap with the unchecked sources listed is unknown."
+    statement = "Disjoint (normalized URL and registrable domain) from every checked historical source listed."
+    if index.out_of_scope:
+        names = ", ".join(source.name for source in index.out_of_scope)
+        statement += (
+            f" Not checked, by recorded scope decision: {names}. Overlap with those sources is unknown; "
+            "the result is an assessment of the current model only."
+        )
+    return statement
+
+
 def load_historical_index(manifest_path=DEFAULT_MANIFEST):
     manifest = load_json(manifest_path, "phishguard-historical-sources/1")
     by_name = {entry["name"]: entry for entry in manifest["sources"]}
@@ -627,7 +655,25 @@ def _collapse(rows, key):
     return kept, removed
 
 
-def clean_dataset(rows, early, errors, index):
+def domain_cap_key(seed, row):
+    return hashlib.sha256(f"{seed}:{row.keys.normalized}".encode()).hexdigest()
+
+
+def cap_per_domain(rows, maximum, seed):
+    """Keep at most `maximum` rows per (label, registrable domain), choosing by a seeded hash."""
+    groups = defaultdict(list)
+    for row in rows:
+        groups[(row.label, row.keys.domain)].append(row)
+    kept, removed = [], []
+    for members in groups.values():
+        ordered = sorted(members, key=lambda row: domain_cap_key(seed, row))
+        kept += ordered[:maximum]
+        removed += ordered[maximum:]
+    kept.sort(key=lambda row: row.line)
+    return kept, removed
+
+
+def clean_dataset(rows, early, errors, index, max_per_domain=None, seed=0):
     """Apply the documented cleaning steps in order and count every removal."""
     steps = [
         {"step": "input_rows_after_validation", "remaining": tally(rows + early)},
@@ -674,6 +720,14 @@ def clean_dataset(rows, early, errors, index):
         "removed": tally(conflict_hits),
         "remaining": tally(cleaned),
     })
+    if max_per_domain:
+        cleaned, capped = cap_per_domain(cleaned, max_per_domain, seed)
+        steps.append({
+            "step": "per_domain_cap",
+            "max_per_registrable_domain": max_per_domain,
+            "removed": tally(capped),
+            "remaining": tally(cleaned),
+        })
     leakage = {"before_overlap_removal": leakage_before, "after_cleaning": template_leakage(cleaned, index)}
     return cleaned, steps, leakage
 
@@ -686,7 +740,7 @@ def template_leakage(rows, index):
     }
 
 
-def sample_balanced(rows, seed, minimum):
+def sample_balanced(rows, seed, minimum, maximum=None):
     by_class = {label: sorted((row for row in rows if row.label == label), key=lambda row: row.keys.normalized) for label in LABELS}
     for label, members in by_class.items():
         if not members:
@@ -696,6 +750,8 @@ def sample_balanced(rows, seed, minimum):
                 f"Only {len(members)} {label} rows remain after cleaning; the protocol requires {minimum}."
             )
     size = min(len(members) for members in by_class.values())
+    if maximum:
+        size = min(size, maximum)
     rng = random.Random(seed)
     sample = rng.sample(by_class["legitimate"], size) + rng.sample(by_class["phishing"], size)
     return sample, size
@@ -802,6 +858,9 @@ def run_evaluation(
             "Historical overlap cannot be fully checked:\n  - "
             + "\n  - ".join(f"{source.name}: {source.status} ({source.detail})" for source in index.gaps)
         )
+    scope_problems = check_scope(protocol, index)
+    if final and scope_problems:
+        raise FinalEvaluationError("Evaluation scope is inconsistent:\n  - " + "\n  - ".join(scope_problems))
 
     datasets = [dataset] if isinstance(dataset, (str, Path)) else list(dataset)
     rows, early, errors = read_datasets(datasets, protocol["cutoff"], now)
@@ -810,9 +869,13 @@ def run_evaluation(
     sources = check_test_sources(sources_path, {row.source for row in rows + early}, strict=final)
     check_source_labels(rows + early, sources["declared"])
 
-    cleaned, steps, leakage = clean_dataset(rows, early, errors, index)
     sampling = protocol["sampling"]
-    sample, per_class = sample_balanced(cleaned, sampling["seed"], sampling["minimum_rows_per_class"])
+    cleaned, steps, leakage = clean_dataset(
+        rows, early, errors, index, sampling.get("max_per_registrable_domain"), sampling["seed"]
+    )
+    sample, per_class = sample_balanced(
+        cleaned, sampling["seed"], sampling["minimum_rows_per_class"], sampling.get("maximum_rows_per_class")
+    )
     steps.append({
         "step": "balanced_sampling",
         "method": sampling["method"],
@@ -845,10 +908,13 @@ def run_evaluation(
             "random_seed": sampling["seed"],
             "sampling_method": sampling["method"],
             "minimum_rows_per_class": sampling["minimum_rows_per_class"],
+            "maximum_rows_per_class": sampling.get("maximum_rows_per_class"),
+            "max_per_registrable_domain": sampling.get("max_per_registrable_domain"),
             "threshold": threshold,
             "public_suffix_list": {"package": "publicsuffixlist", "version": psl_version, "private_suffixes": True},
         },
         "feature_names": feature_names,
+        "evaluation_scope": protocol.get("evaluation_scope"),
         "inputs": {
             "datasets": [{"path": str(path), "sha256": sha256(path)} for path in datasets],
             "historical_manifest_sha256": sha256(manifest_path),
@@ -862,11 +928,8 @@ def run_evaluation(
             "checked_sources": checked,
             "out_of_scope_sources": [{"name": s.name, "decision": s.detail} for s in index.out_of_scope],
             "unchecked_sources": [{"name": s.name, "status": s.status, "detail": s.detail} for s in index.gaps],
-            "statement": (
-                "Disjoint (normalized URL and registrable domain) from every checked historical source listed."
-                if not index.gaps else
-                "NOT fully checked: overlap with the unchecked sources listed is unknown."
-            ),
+            "scope_problems": scope_problems,
+            "statement": overlap_statement(index),
         },
         "cleaning_steps": steps,
         "template_leakage": leakage,
@@ -1046,6 +1109,10 @@ def preflight(protocol_path=DEFAULT_PROTOCOL, manifest_path=DEFAULT_MANIFEST, of
     index = load_historical_index(manifest_path)
     result["historical_sources"] = [source.summary() for source in index.sources]
     result["blockers"] += [f"historical source {s.name}: {s.status} ({s.detail})" for s in index.gaps]
+    result["evaluation_scope"] = protocol.get("evaluation_scope")
+    result["out_of_scope_sources"] = [{"name": s.name, "decision": s.detail} for s in index.out_of_scope]
+    result["blockers"] += [f"scope: {problem}" for problem in check_scope(protocol, index)]
+    result["overlap_statement"] = overlap_statement(index)
     if official_domains:
         allowed = read_official_domains(official_domains)
         result["official_domains"] = len(allowed)
