@@ -63,7 +63,7 @@
       "format": "out_of_scope",
       "path": "ml_model/data/external/Phishing_Legitimate_full.csv",
       "sha256": "204c226d6b6126a40423084ce9d1391a162d0545f451b858464c1b9b742a8900",
-      "decision": "Outside the scope of this evaluation of the current 18-feature model: see protocol.json evaluation_scope.excluded_historical_sources. Proposed 2026-11-22; takes effect only if the protocol is approved."
+      "decision": "Outside the scope of this evaluation of the current 18-feature model: see protocol.json evaluation_scope.excluded_historical_sources. Approved with the protocol on 2026-11-22."
     },
     {
       "name": "synthetic_demo_fixture",

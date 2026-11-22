@@ -1,7 +1,7 @@
 # Final Untouched Model-Evaluation Plan
 
-Status: **historical sources recovered and verified; protocol awaiting approval; data collection not authorized.** No final test
-data has been collected or opened. "Model evaluation" remains unchecked in
+Status: **protocol approved on 2026-11-22; ready for data collection.** No final
+test data has been collected or opened. "Model evaluation" remains unchecked in
 [`cp2_feature_checklist.md`](cp2_feature_checklist.md) until this plan has been
 carried out and its results recorded.
 
@@ -37,7 +37,7 @@ and the evaluator refuses to run if the local model differs.
 If the model file is lost or retrained, this record is no longer valid and the
 plan restarts with the new model.
 
-## Proposed evaluation rules (awaiting approval)
+## Approved evaluation rules (2026-11-22)
 
 | Rule | Proposal |
 | --- | --- |
@@ -68,7 +68,7 @@ restarts with new data collected after a new cutoff.
 
 ## 2. Cutoff
 
-**Proposed: `2026-09-01T00:00:00Z`** (not yet approved).
+**Approved: `2026-09-01T00:00:00Z`.**
 
 - The recovered PhishTank snapshot's latest `verification_time` is
   **2026-08-31T02:02:21Z**. The raw-pipeline run was generated at
