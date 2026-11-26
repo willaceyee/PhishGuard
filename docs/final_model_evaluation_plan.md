@@ -1,9 +1,19 @@
 # Final Untouched Model-Evaluation Plan
 
-Status: **protocol approved on 2026-11-22; ready for data collection.** No final
-test data has been collected or opened. "Model evaluation" remains unchecked in
-[`cp2_feature_checklist.md`](cp2_feature_checklist.md) until this plan has been
-carried out and its results recorded.
+Status: **completed.**
+
+- The protocol was approved on 2026-11-22.
+- Data was collected on 22–26 November 2026.
+- The single final run took place on 2026-11-26 from commit `f696db3`.
+- The report is
+  [`final_untouched_evaluation.json`](../ml_model/artifacts/final_untouched_evaluation.json),
+  and the results are explained in
+  [`phase5_ml_detection.md`, result D](phase5_ml_detection.md#d-final_untouched_evaluationjson-the-final-untouched-test).
+- The report was verified against `protocol.json` before "Model evaluation" was
+  checked in [`cp2_feature_checklist.md`](cp2_feature_checklist.md).
+
+The sections below record the plan as approved, plus the dated collection
+corrections in section 7.
 
 ## Purpose
 
