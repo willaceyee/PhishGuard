@@ -457,10 +457,17 @@ def test_convert_phishtank(tmp_path):
         ["1", "http://a.test/login", "", "2026-11-20T00:00:00+00:00", "yes", "2026-11-20T01:00:00+00:00", "yes", "Bank"],
         ["2", "http://b.test/login", "", "2026-11-20T00:00:00+00:00", "no", "2026-11-20T01:00:00+00:00", "yes", "Bank"],
         ["3", "http://c.test/login", "", "2026-11-20T00:00:00+00:00", "yes", "yesterday", "yes", "Bank"],
+        ["4", "http://d.test/" + "a" * 2050, "", "2026-11-20T00:00:00+00:00", "yes", "2026-11-20T02:00:00+00:00", "yes", "Bank"],
+        ["5", "http://e.test/log in", "", "2026-11-20T00:00:00+00:00", "yes", "2026-08-01T00:00:00+00:00", "yes", "Bank"],
     ])
     out = tmp_path / "phish.csv"
     summary = fe.convert_phishtank(raw, out)
-    assert summary["rows"] == 1 and summary["skipped"] == {"not_verified_online": 1, "invalid_verification_time": 1}
+    assert summary["rows"] == 1 and summary["skipped"] == {
+        "not_verified_online": 1, "invalid_verification_time": 1, "unsupported_input": 2}
+    assert summary["unsupported_input"]["by_reason"] == {
+        "URL must contain between 1 and 2048 characters": 1, "URL cannot contain whitespace": 1}
+    assert summary["unsupported_input"]["observed_at"] == ["2026-08-01T00:00:00Z", "2026-11-20T02:00:00Z"]
+    assert "d.test" not in json.dumps(summary)  # counts only, no URLs
     rows, _, errors = fe.read_dataset(out, fe.parse_utc(CUTOFF), NOW)
     assert errors == [] and rows[0].observed_at == datetime(2026, 11, 20, 1, tzinfo=timezone.utc)
     with pytest.raises(fe.FinalEvaluationError, match="must contain"):
@@ -488,6 +495,7 @@ def test_convert_common_crawl_applies_benign_label_rule(tmp_path):
         capture("https://user@uni.ac.uk/x"), capture("https://uni.ac.uk:8443/x"), capture("http://192.0.2.5/x"),
         capture("https://notagency.gov.uk/x"),
         capture("https://www.clinic.example/book"),
+        capture("https://agency.gov.uk/has space"),
         "not json", "",
     ]
     index = tmp_path / "cdx.jsonl"
@@ -496,7 +504,8 @@ def test_convert_common_crawl_applies_benign_label_rule(tmp_path):
     summary = fe.convert_common_crawl([index], domains, out, max_per_domain=3, seed=7, phishing_csv=phishing)
     assert summary["rows"] == 3 and summary["contested_domains_excluded"] == ["clinic.example"]
     assert summary["skipped"] == {"not_200_html": 2, "userinfo_ip_or_port": 3, "domain_not_allow_listed": 1,
-                                  "domain_in_phishing_feed": 1, "unparseable_record": 1}
+                                  "domain_in_phishing_feed": 1, "unparseable_record": 1, "unsupported_input": 1}
+    assert summary["unsupported_input"]["by_reason"] == {"URL cannot contain whitespace": 1}
     rows, _, errors = fe.read_dataset(out, fe.parse_utc(CUTOFF), NOW)
     assert errors == [] and {row.keys.domain for row in rows} == {"agency.gov.uk"}
     dup = [row for row in rows if row.url.endswith("step=2")]

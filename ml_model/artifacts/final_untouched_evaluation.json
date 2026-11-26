@@ -1,0 +1,1475 @@
+{
+  "report_type": "final untouched evaluation",
+  "final": true,
+  "generated_at": "2026-11-26T13:21:27.805810Z",
+  "model": {
+    "path": "C:\\Users\\willa\\Documents\\PhishGuard-evaluation\\ml_model\\artifacts\\phishguard_url_model.joblib",
+    "sha256": "ac1dc5aac4d97333faea4bcf49a8323b55c49d9d7994db1a42f17c9f5cef9edc",
+    "threshold": 0.5,
+    "feature_names": [
+      "url_length",
+      "hostname_length",
+      "path_length",
+      "query_length",
+      "digit_count",
+      "dot_count",
+      "hyphen_count",
+      "at_count",
+      "percent_count",
+      "subdomain_count",
+      "path_depth",
+      "query_parameter_count",
+      "suspicious_keyword_count",
+      "has_ip_hostname",
+      "has_explicit_port",
+      "has_punycode",
+      "uses_known_shortener",
+      "url_entropy"
+    ],
+    "model_type": "RandomForestClassifier",
+    "trained_at": "2026-08-31T14:53:06.318597+00:00"
+  },
+  "evaluation_code": {
+    "commit": "f696db364296f04b0c3a919a80b62dca18485743",
+    "uncommitted_tracked_changes": []
+  },
+  "protocol": {
+    "sha256": "f0c261dd82eb14e5b02a4828a8345b7b355e113edc389ea0c1e15ecc7da83aac",
+    "approved": true,
+    "cutoff_utc": "2026-09-01T00:00:00Z",
+    "random_seed": 42,
+    "sampling_method": "after cleaning, keep at most max_per_registrable_domain rows per class and registrable domain (lowest SHA-256 of 'seed:normalized URL' first); then sort each class by normalized URL and draw min(n_legitimate, n_phishing, maximum_rows_per_class) rows from each class without replacement using random.Random(seed).sample (legitimate first, then phishing)",
+    "minimum_rows_per_class": 500,
+    "maximum_rows_per_class": 1000,
+    "max_per_registrable_domain": 20,
+    "threshold": 0.5,
+    "public_suffix_list": {
+      "package": "publicsuffixlist",
+      "version": "1.1.2.20261107",
+      "private_suffixes": true
+    }
+  },
+  "feature_names": [
+    "url_length",
+    "hostname_length",
+    "path_length",
+    "query_length",
+    "digit_count",
+    "dot_count",
+    "hyphen_count",
+    "at_count",
+    "percent_count",
+    "subdomain_count",
+    "path_depth",
+    "query_parameter_count",
+    "suspicious_keyword_count",
+    "has_ip_hostname",
+    "has_explicit_port",
+    "has_punycode",
+    "uses_known_shortener",
+    "url_entropy"
+  ],
+  "evaluation_scope": {
+    "model": "Current 18-feature raw-URL Random Forest (ml_model/artifacts/phishguard_url_model.joblib, SHA-256 below)",
+    "question": "How well does the current model separate phishing from legitimate URLs first verified or observed after the cutoff?",
+    "historical_coverage_rule": "Exclude every normalized URL and registrable domain from data that trained, validated, diagnosed, or baseline-tested the current model or its direct raw-pipeline predecessor.",
+    "excluded_historical_sources": [
+      {
+        "name": "precomputed_feature_dataset",
+        "reason": "Feature-only dataset with no URLs. It trained and random-split tested only the earlier 15-feature precomputed model (metrics.json). The current model was trained only on the PhishTank snapshot, the legitimate status archive, and Tranco homepages, as confirmed by exact reproduction of every recorded training count and validation/diagnostic metric (historical_reconstruction_evidence.json). Overlap of the final test with this dataset cannot be checked and remains unknown."
+      }
+    ],
+    "not_assessed": "The earlier 15-feature precomputed model. This evaluation makes no claim about it."
+  },
+  "inputs": {
+    "datasets": [
+      {
+        "path": "..\\ml_model\\data\\final\\phishing.csv",
+        "sha256": "a953126167b792143afb2f9a2a3da78442bdf0e20e51125056c819ed22d37e5e"
+      },
+      {
+        "path": "..\\ml_model\\data\\final\\legitimate.csv",
+        "sha256": "d7e2f6432a29465b589c29bb1c4d4cc15ca97a75b073a6836f18629a3c87dcfe"
+      }
+    ],
+    "historical_manifest_sha256": "9bdbc50a6d23b91dd0a55d3e6d9b8323f948db955519bd35578c6aad337a1088",
+    "test_sources_sha256": "391aa623e5594caf99d134f44724dd0bc61d34986794446dfe55b6a4070a4326",
+    "raw_source_files": {
+      "ml_model/data/final/raw/cc-index/download_record.json": "725d58a4e66230a3ad5688335c7803bc9df02fc55f49a14d7fa1c366cd02499c",
+      "ml_model/data/final/raw/cc-index/acdmaagedcareservices.com.au.jsonl": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ml_model/data/final/raw/cc-index/acf.gov.jsonl": "5eca04758b7cd0c2c5405d7ff98270a6b6ebc08e963436d95008581ac18ce974",
+      "ml_model/data/final/raw/cc-index/adi.org.au.jsonl": "d4dfd00e40ed9b5e7e4fbe0618540b132dbe6d64c0846262bbec82c1cf7920df",
+      "ml_model/data/final/raw/cc-index/alliancebank.com.jsonl": "e922ebbdfa51f17c1409ed799ccc4a65e244606e9e781cd31c2d73b9cf0e6fc8",
+      "ml_model/data/final/raw/cc-index/almabank.com.jsonl": "ac5aa7b3e3d4ef9b00e9514748ccfca5288c11c6168ac3130f3f52a5e39b0290",
+      "ml_model/data/final/raw/cc-index/amalgamatedbank.com.jsonl": "e51796e9dff4ca9f1603ec86ebe3d6ad517a65b163e958ecaea3b6926935862d",
+      "ml_model/data/final/raw/cc-index/ar2jdpa.gov.jsonl": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ml_model/data/final/raw/cc-index/ashleighcommunity.com.au.jsonl": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ml_model/data/final/raw/cc-index/avidbank.com.jsonl": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ml_model/data/final/raw/cc-index/bayside.qld.edu.au.jsonl": "7e372bbf66ad5f4c5efbda5998b9c5834fc2b69b0fb1fab8f99075da3d8418aa",
+      "ml_model/data/final/raw/cc-index/bdc.nsw.edu.au.jsonl": "692dc2ba2b135a2c4c19ed4a8374e6179f0c468fc65da9a6eba110c7f843af73",
+      "ml_model/data/final/raw/cc-index/blancogroundwatertx.gov.jsonl": "ffd0bf02e71da5da809c7d4870031b03d9da42ed822ee65a665f1425df7453bc",
+      "ml_model/data/final/raw/cc-index/brisyouth.org.jsonl": "a7601f07d9aa652a505ed0eb966dad5ac3a03fa4c834ac174ef6b6d219ec1329",
+      "ml_model/data/final/raw/cc-index/brunersburgwater.gov.jsonl": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ml_model/data/final/raw/cc-index/cahwnet.gov.jsonl": "0f4fe288dd5e99996786261de7ad41b3ae1a970f820a949b4d91d3ed88290ea3",
+      "ml_model/data/final/raw/cc-index/cameragal.nsw.edu.au.jsonl": "a9c3b418165c8f61f81874406d333a142eb497382b39160217feeb7aa5846025",
+      "ml_model/data/final/raw/cc-index/cancercouncil.com.au.jsonl": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ml_model/data/final/raw/cc-index/cancertrialsaustralia.com.jsonl": "96a2b93b082bcd877af4ab13100e292a9fbb186e22bea7beee64a5aa0ed4f5f2",
+      "ml_model/data/final/raw/cc-index/ccuanj.gov.jsonl": "dcac99c9987d1c64ba7ab626dbd20dcaa3ee6eb4b924a9d397d5ab1158578003",
+      "ml_model/data/final/raw/cc-index/clermonthealthohio.gov.jsonl": "921dc57030be24821638818df67e04491738297ffbfbac701508c8f91fcb5a65",
+      "ml_model/data/final/raw/cc-index/clubforster.com.au.jsonl": "3fc7a235fbeec9adaa47519b0ae7f97f4cebe35cb049b006a9ab912df6c9241c",
+      "ml_model/data/final/raw/cc-index/cobramregionalcare.com.au.jsonl": "fa8aebb0f9eb48a17b4d96f39946dabc60a9c0dd1c39762c1ce0477e7d01c425",
+      "ml_model/data/final/raw/cc-index/comm-unityplus.org.au.jsonl": "57f984c16441d65f4e75e71cdc9dfb991eed48f6e7ef6e1c5d90866f75629a4f",
+      "ml_model/data/final/raw/cc-index/conservationecologycentre.org.jsonl": "d6177a1f7145a12b9f6ef70c73a9334ec01df374b9f685d84eefd57b89397003",
+      "ml_model/data/final/raw/cc-index/csbb.catholic.edu.au.jsonl": "f339964726872af7929ef2d1d3c81fd757745fda24a1ee876660e3b0186f3ec4",
+      "ml_model/data/final/raw/cc-index/cybermaryland.gov.jsonl": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ml_model/data/final/raw/cc-index/dcpudwa.gov.jsonl": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ml_model/data/final/raw/cc-index/emmauscc.sa.edu.au.jsonl": "03ff52ca542fb1e83363d4db349269e1eea1a62c8753f45d428a62c39ce3fcc4",
+      "ml_model/data/final/raw/cc-index/esatn.gov.jsonl": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ml_model/data/final/raw/cc-index/esquirebank.com.jsonl": "bba1329700569002700db51530b65c61b31227fecbb2ffe5ff51fb8079eaebe9",
+      "ml_model/data/final/raw/cc-index/etowahwaterga.gov.jsonl": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ml_model/data/final/raw/cc-index/fairbridge.asn.au.jsonl": "20470b1985de999980e1f00c43b456d9c74407cf681a2d4ba32112e3175c4fa6",
+      "ml_model/data/final/raw/cc-index/familyservices.org.au.jsonl": "de85fada2173e72f0979ce0956f7293b8424ad62ff9c4b947d4c6840b00bb709",
+      "ml_model/data/final/raw/cc-index/ffin.com.jsonl": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ml_model/data/final/raw/cc-index/findtreatment.gov.jsonl": "d431b246c215c3daa02442fd1a2bd979f6b7d7c71a5bc12fe6b67883b1018a57",
+      "ml_model/data/final/raw/cc-index/firstbankmidwest.com.jsonl": "104920debecbd5a902c3e5ba67741fd3235449e0b66eb90e2acf191990621d9b",
+      "ml_model/data/final/raw/cc-index/firstmid.com.jsonl": "296ad32eda222418bbf69c1429b3a91cd8b13e756a93054dcf7f9aa7785c379a",
+      "ml_model/data/final/raw/cc-index/firstservicebank.com.jsonl": "6c3aebed2ab78b77aa599e03c8ef4abc11979a28b1078e9631a8ec784df7f6ce",
+      "ml_model/data/final/raw/cc-index/floridasunshine.gov.jsonl": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ml_model/data/final/raw/cc-index/flunclaimedfunds.gov.jsonl": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ml_model/data/final/raw/cc-index/flysbd.gov.jsonl": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ml_model/data/final/raw/cc-index/forestvillemontessori.nsw.edu.au.jsonl": "9e715562f179827f219190d4f8e14e4428feadd74802244bd597f859c9f73f44",
+      "ml_model/data/final/raw/cc-index/frazierparkpudca.gov.jsonl": "4e8e8d20beb18a4312f9df489db5bc6d44c2701924044a4cb950cfa9b8b72d1c",
+      "ml_model/data/final/raw/cc-index/gawsaor.gov.jsonl": "a8e3d9e2ca65821bb8ca87aa712199b4754d9a002649004e5b7c0e031141f598",
+      "ml_model/data/final/raw/cc-index/goalcollege.nsw.edu.au.jsonl": "6781b2462281d07c302489a66b0fb86519d22643b7669c1032dace30a09020b9",
+      "ml_model/data/final/raw/cc-index/hanoverbank.com.jsonl": "4365f0a1d9527915728097bb91f89185d63f59ddeda8f74c78a61d3347c63b85",
+      "ml_model/data/final/raw/cc-index/hollowayagedcare.com.au.jsonl": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ml_model/data/final/raw/cc-index/inlife.org.au.jsonl": "d663df6f03fa30b9156aece25714bc48f8025b907af9894bd060ddbe3282c96d",
+      "ml_model/data/final/raw/cc-index/innovateohio.gov.jsonl": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ml_model/data/final/raw/cc-index/iowastate.bank.jsonl": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ml_model/data/final/raw/cc-index/iowaworks.gov.jsonl": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ml_model/data/final/raw/cc-index/ipdc.org.au.jsonl": "e9ffa8da8e6a04c1beeb4db8929b5607e57d95bc88dd0d778e8876a78ed0799f",
+      "ml_model/data/final/raw/cc-index/ivesbank.com.jsonl": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ml_model/data/final/raw/cc-index/jjf.org.au.jsonl": "b2253ca5f5be69f69e28ad679101888c7d12fc89190cb6133a5364a0e696333c",
+      "ml_model/data/final/raw/cc-index/kansasui.gov.jsonl": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ml_model/data/final/raw/cc-index/kingsbaptist.sa.edu.au.jsonl": "64662e9ce9beb184fc6db14006f6f08a9bd0031522ae738a37eace5286a4e335",
+      "ml_model/data/final/raw/cc-index/kingsley.qld.edu.au.jsonl": "7484cf50a7736dcd89fa4b50cfcd8df8456d8292a0e004963ba7016962d56226",
+      "ml_model/data/final/raw/cc-index/kuyper.nsw.edu.au.jsonl": "f20d3d816f7047fcd76b2609b8a272fc9aa370d569b7b1233fa0513b6b1ea391",
+      "ml_model/data/final/raw/cc-index/ledyard.bank.jsonl": "6ba711d0b601fa523857bec589f91dbcbe2354e3fcd52fa034e0afe16e12796a",
+      "ml_model/data/final/raw/cc-index/lighthousecare.org.au.jsonl": "5715b59819e881e06a54113dbc12822a38063fbca89d4310ef5aec41bb1cf442",
+      "ml_model/data/final/raw/cc-index/loreto.qld.edu.au.jsonl": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ml_model/data/final/raw/cc-index/maamgiingana.nsw.edu.au.jsonl": "cf8411e31fd6c12285abb276ea12b56257c52597c8416742b8f2d3c9cf8a80ce",
+      "ml_model/data/final/raw/cc-index/mackaywomensservices.org.au.jsonl": "69c214ff6bb7767f38b7d2dec1a565167924cc7d3af0ed7cdca99ffb7975e899",
+      "ml_model/data/final/raw/cc-index/macsinc.org.au.jsonl": "403d047f76a22d49234145c43a96bcadb189a60aa1f84e68c3898ecf203648ed",
+      "ml_model/data/final/raw/cc-index/marysvilleboroughstormwater.gov.jsonl": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ml_model/data/final/raw/cc-index/maxima.com.au.jsonl": "b7f8419e149268a69391772d0e87951e9ef4381859087702af9762a18e7ea617",
+      "ml_model/data/final/raw/cc-index/mdqld.org.au.jsonl": "5ff40f8722b58b861802ef0898c0cf8257f1fb31b2fa6be879c65c1c1b80c438",
+      "ml_model/data/final/raw/cc-index/melaleuca.org.au.jsonl": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ml_model/data/final/raw/cc-index/middletownusdca.gov.jsonl": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ml_model/data/final/raw/cc-index/minaret.vic.edu.au.jsonl": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ml_model/data/final/raw/cc-index/mris.wa.edu.au.jsonl": "22443084b588394b23fad6eb3956bca91523790ea88243177a836265922c085c",
+      "ml_model/data/final/raw/cc-index/mununjali.com.au.jsonl": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ml_model/data/final/raw/cc-index/mycentral.bank.jsonl": "860dd48c70838d172fc91937f69ecf4688fcfe586ba837d124b7bb834fc5612c",
+      "ml_model/data/final/raw/cc-index/ncdor.gov.jsonl": "3e53df610be3d7d3bb568f2fafdfe35a773095deed2fecce34534a035658d709",
+      "ml_model/data/final/raw/cc-index/nhcsdia.gov.jsonl": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ml_model/data/final/raw/cc-index/njib.gov.jsonl": "53bf7e098f1040180223b52dbc3c6a552033d8e6c3424935762a51731bf8beba",
+      "ml_model/data/final/raw/cc-index/njoag.gov.jsonl": "077514dc87126a949decb15065692c1957ba1861eda4c0fbb0c2df4488caaef5",
+      "ml_model/data/final/raw/cc-index/nlrwu.gov.jsonl": "d1e160a8dd585bb2c9ed5e22f01ffb4aacc7fe6c6eabaa7054c9fca0491c4af0",
+      "ml_model/data/final/raw/cc-index/nunku.org.au.jsonl": "577bc3270361840f1905e4822aaae6e7024b6136d992ca65e8a6d4238cfe9b36",
+      "ml_model/data/final/raw/cc-index/nvprepaid.gov.jsonl": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ml_model/data/final/raw/cc-index/octa.gov.jsonl": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ml_model/data/final/raw/cc-index/ohioagriculture.gov.jsonl": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ml_model/data/final/raw/cc-index/ovbc.com.jsonl": "4c32d2cc4d11d4c296f8e53a29f86ac425afe7c240fb6f672a815f3db4d9e11a",
+      "ml_model/data/final/raw/cc-index/pentucketbank.com.jsonl": "311f7123271c7470e995c6c6ca51eea2cae25ce95737782ac2615d0b9059a25e",
+      "ml_model/data/final/raw/cc-index/peoplesnationalbank.com.jsonl": "170509acdae2b151dbe3f89c3364536f7d44366bf38b1fc2520827509d3087c0",
+      "ml_model/data/final/raw/cc-index/piedmontfederal.bank.jsonl": "3d9f7ae402635261fbaf5597ff75a6dc53df0a733888b2ab6cd937ea8e391c40",
+      "ml_model/data/final/raw/cc-index/pikemowatersupply.gov.jsonl": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ml_model/data/final/raw/cc-index/pnhome.com.au.jsonl": "0e715fbb06d7233315b105bce11c738969f9b6b80682300505111cf395f760d7",
+      "ml_model/data/final/raw/cc-index/polkswcdiowa.gov.jsonl": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ml_model/data/final/raw/cc-index/primarycareconnect.com.au.jsonl": "f176843ad1ba2ed8d571663df570afc1f00fe9488f756befe82936b41a613372",
+      "ml_model/data/final/raw/cc-index/pwsd1maconco.gov.jsonl": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ml_model/data/final/raw/cc-index/rilegislature.gov.jsonl": "82ef23e4290e839a6e4743a1fc3d4bf953f6e345c0cc17b7d2a0d391c8483d24",
+      "ml_model/data/final/raw/cc-index/ruralbusinesssupport.org.au.jsonl": "ef7b10732de3d19b876f3be21a0219d392f21de8a9f6b648a50e62243a319731",
+      "ml_model/data/final/raw/cc-index/ruralmeded.org.au.jsonl": "7cb8eb5ba6a9442758a220bc3469ed70e22c8528246924dc354820ab6331cf73",
+      "ml_model/data/final/raw/cc-index/ryewaterdistrict.gov.jsonl": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ml_model/data/final/raw/cc-index/sanpetewaterconservancy.gov.jsonl": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ml_model/data/final/raw/cc-index/sharetheroadsafely.gov.jsonl": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ml_model/data/final/raw/cc-index/soldieron.org.au.jsonl": "385231608e90d4087305fe4a6f1d9e166e59ecb70585b638b594e34d01e0f771",
+      "ml_model/data/final/raw/cc-index/somersettrust.com.jsonl": "a23a550e81a384770fb5f0bcb3227df2c013cf3fff6dea07012aa58d910514dc",
+      "ml_model/data/final/raw/cc-index/stannasagedcare.com.au.jsonl": "e2c606a06750f9be7dc7e94666a7942e426cd495da3113c79c0b4c1af25e293c",
+      "ml_model/data/final/raw/cc-index/stemcelldonors.org.au.jsonl": "45a4b429c34d5270f8209b9ffd26e9f181ee00238e17dd39232111b253fa21d8",
+      "ml_model/data/final/raw/cc-index/steppingstonehouse.com.au.jsonl": "a65f3ac9e40b4cf81806a1262c1be855144cc54a7d7d6f02375130672218ef74",
+      "ml_model/data/final/raw/cc-index/stjohnspreston.vic.edu.au.jsonl": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ml_model/data/final/raw/cc-index/straphaelscowra.catholic.edu.au.jsonl": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ml_model/data/final/raw/cc-index/surgeongeneral.gov.jsonl": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ml_model/data/final/raw/cc-index/svlh.gov.jsonl": "c4fd60b6c7b2871854ae4f3ad4009b3ad8b532554894dda95105e3828abae4e6",
+      "ml_model/data/final/raw/cc-index/swcc.wa.edu.au.jsonl": "7def05615cfe786613d46fabb6e14bf49e5facd786810402136ebae64a1459c4",
+      "ml_model/data/final/raw/cc-index/swmetrowsdco.gov.jsonl": "7b8c798a49bb51b3d3ea63111dfd75858027f20f23752a6e16013c864778c5da",
+      "ml_model/data/final/raw/cc-index/tcc.sa.edu.au.jsonl": "9c19c7e7f376e58ea7d25dc9b2dc1fd653c0dbddaea3d44cfee1d03da43b3c68",
+      "ml_model/data/final/raw/cc-index/tennesseereconnect.gov.jsonl": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ml_model/data/final/raw/cc-index/texasonline.gov.jsonl": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ml_model/data/final/raw/cc-index/thebaysagedcare.org.au.jsonl": "2b68e8d1d3c5f879e4f1f6e1deaaa16ac1bb5f7ce6702023e2696fafbdc1efa3",
+      "ml_model/data/final/raw/cc-index/thompsonvalleyems.gov.jsonl": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ml_model/data/final/raw/cc-index/transparencyflorida.gov.jsonl": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ml_model/data/final/raw/cc-index/tricountyhealthut.gov.jsonl": "cdac36842b9ee39cecc14b40b1a47fd07dca46ff634c7a17a777a429d079da09",
+      "ml_model/data/final/raw/cc-index/tworiversswcd.gov.jsonl": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ml_model/data/final/raw/cc-index/vfff.org.au.jsonl": "869e7492bf421cc90a293441f9fb2ba1fff2442c0ac7c93d10caab16e6719f71",
+      "ml_model/data/final/raw/cc-index/vnb.com.jsonl": "a2ed311d46098d3bfeb66fa4496c9ad92a7534e2807b2cca5eb96dc3362667d3",
+      "ml_model/data/final/raw/cc-index/wvunclaimedproperty.gov.jsonl": "8095c54d418edf632fafb4defd2b612afd022ac6fbeb7d972117930f3be26045",
+      "ml_model/data/final/raw/cc-index/wyopen.gov.jsonl": "7c64f490d0715ff826c47d3ed6e06461816d689f320860ae5cfb1cf656157378",
+      "ml_model/data/final/raw/online-valid.csv": "c1db91b4479296c81a2c1450df5a0690815a201237d6224d8e2af01ae8e0acf8"
+    }
+  },
+  "test_sources": {
+    "commoncrawl_cc_main_2026_43_official": {
+      "label": "legitimate",
+      "publisher": "Common Crawl Foundation",
+      "access_url": "https://data.commoncrawl.org/crawl-data/CC-MAIN-2026-43/cc-index.paths.gz",
+      "documentation_url": "https://www.commoncrawl.org/blog/october-2026-crawl-archive-now-available",
+      "snapshot_downloaded_at_utc": "2026-11-26T13:10:10Z",
+      "terms": "Common Crawl Terms of Use, last updated 2024-03-07 (https://commoncrawl.org/terms-of-use): limited non-exclusive licence; crawled content may carry separate owner terms; no clause specifically covers redistributing URL lists.",
+      "label_definition": "Legitimate: capture from CC-MAIN-2026-43 (crawled 2026-10-05 to 2026-10-18) whose host is an allow-listed official registrable domain (official_domains.csv) or its subdomain, HTTP 200, HTML MIME type, no userinfo/IP host/non-default port, and domain absent from the phishing snapshot. The crawl timestamp or a 200 response alone does not establish the label.",
+      "timestamp_field": "Common Crawl capture timestamp",
+      "sampling_rule": "convert-common-crawl with max_per_domain 50 and seed 42 (headroom for duplicate removal); the evaluator then caps every class at 20 rows per registrable domain and samples at most 1,000 per class.",
+      "coverage_notes": "Index records downloaded 2026-11-26T04:02:52Z to 2026-11-26T13:10:10Z from https://index.commoncrawl.org/CC-MAIN-2026-43-index with filters status:200 and =mime-detected:text/html (corrected 2026-11-26; see plan section 7). All 120 domains have a recorded outcome: 76 with captures, 44 with none (the server answered 'No Captures found'), 0 failed; 10301 records in total. Domains with no captures are mostly small US .gov program and utility sites, which likely redirect (redirects are excluded), so government and transport/utilities are under-represented and education, finance, health and non-profit dominate. A seeded re-query of 10 domains returned identical counts for 8; 2 re-queries hit server errors. A response truncated exactly at a line boundary cannot be detected.",
+      "max_per_domain": 50,
+      "converter_seed": 42,
+      "raw_files": [
+        {
+          "path": "ml_model/data/final/raw/cc-index/download_record.json",
+          "sha256": "725d58a4e66230a3ad5688335c7803bc9df02fc55f49a14d7fa1c366cd02499c"
+        },
+        {
+          "path": "ml_model/data/final/raw/cc-index/acdmaagedcareservices.com.au.jsonl",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "records": 0,
+          "outcome": "no_matching_captures"
+        },
+        {
+          "path": "ml_model/data/final/raw/cc-index/acf.gov.jsonl",
+          "sha256": "5eca04758b7cd0c2c5405d7ff98270a6b6ebc08e963436d95008581ac18ce974",
+          "records": 1462,
+          "outcome": "captured"
+        },
+        {
+          "path": "ml_model/data/final/raw/cc-index/adi.org.au.jsonl",
+          "sha256": "d4dfd00e40ed9b5e7e4fbe0618540b132dbe6d64c0846262bbec82c1cf7920df",
+          "records": 19,
+          "outcome": "captured"
+        },
+        {
+          "path": "ml_model/data/final/raw/cc-index/alliancebank.com.jsonl",
+          "sha256": "e922ebbdfa51f17c1409ed799ccc4a65e244606e9e781cd31c2d73b9cf0e6fc8",
+          "records": 43,
+          "outcome": "captured"
+        },
+        {
+          "path": "ml_model/data/final/raw/cc-index/almabank.com.jsonl",
+          "sha256": "ac5aa7b3e3d4ef9b00e9514748ccfca5288c11c6168ac3130f3f52a5e39b0290",
+          "records": 156,
+          "outcome": "captured"
+        },
+        {
+          "path": "ml_model/data/final/raw/cc-index/amalgamatedbank.com.jsonl",
+          "sha256": "e51796e9dff4ca9f1603ec86ebe3d6ad517a65b163e958ecaea3b6926935862d",
+          "records": 178,
+          "outcome": "captured"
+        },
+        {
+          "path": "ml_model/data/final/raw/cc-index/ar2jdpa.gov.jsonl",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "records": 0,
+          "outcome": "no_matching_captures"
+        },
+        {
+          "path": "ml_model/data/final/raw/cc-index/ashleighcommunity.com.au.jsonl",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "records": 0,
+          "outcome": "no_matching_captures"
+        },
+        {
+          "path": "ml_model/data/final/raw/cc-index/avidbank.com.jsonl",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "records": 0,
+          "outcome": "no_matching_captures"
+        },
+        {
+          "path": "ml_model/data/final/raw/cc-index/bayside.qld.edu.au.jsonl",
+          "sha256": "7e372bbf66ad5f4c5efbda5998b9c5834fc2b69b0fb1fab8f99075da3d8418aa",
+          "records": 43,
+          "outcome": "captured"
+        },
+        {
+          "path": "ml_model/data/final/raw/cc-index/bdc.nsw.edu.au.jsonl",
+          "sha256": "692dc2ba2b135a2c4c19ed4a8374e6179f0c468fc65da9a6eba110c7f843af73",
+          "records": 78,
+          "outcome": "captured"
+        },
+        {
+          "path": "ml_model/data/final/raw/cc-index/blancogroundwatertx.gov.jsonl",
+          "sha256": "ffd0bf02e71da5da809c7d4870031b03d9da42ed822ee65a665f1425df7453bc",
+          "records": 72,
+          "outcome": "captured"
+        },
+        {
+          "path": "ml_model/data/final/raw/cc-index/brisyouth.org.jsonl",
+          "sha256": "a7601f07d9aa652a505ed0eb966dad5ac3a03fa4c834ac174ef6b6d219ec1329",
+          "records": 79,
+          "outcome": "captured"
+        },
+        {
+          "path": "ml_model/data/final/raw/cc-index/brunersburgwater.gov.jsonl",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "records": 0,
+          "outcome": "no_matching_captures"
+        },
+        {
+          "path": "ml_model/data/final/raw/cc-index/cahwnet.gov.jsonl",
+          "sha256": "0f4fe288dd5e99996786261de7ad41b3ae1a970f820a949b4d91d3ed88290ea3",
+          "records": 1,
+          "outcome": "captured"
+        },
+        {
+          "path": "ml_model/data/final/raw/cc-index/cameragal.nsw.edu.au.jsonl",
+          "sha256": "a9c3b418165c8f61f81874406d333a142eb497382b39160217feeb7aa5846025",
+          "records": 15,
+          "outcome": "captured"
+        },
+        {
+          "path": "ml_model/data/final/raw/cc-index/cancercouncil.com.au.jsonl",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "records": 0,
+          "outcome": "no_matching_captures"
+        },
+        {
+          "path": "ml_model/data/final/raw/cc-index/cancertrialsaustralia.com.jsonl",
+          "sha256": "96a2b93b082bcd877af4ab13100e292a9fbb186e22bea7beee64a5aa0ed4f5f2",
+          "records": 1231,
+          "outcome": "captured"
+        },
+        {
+          "path": "ml_model/data/final/raw/cc-index/ccuanj.gov.jsonl",
+          "sha256": "dcac99c9987d1c64ba7ab626dbd20dcaa3ee6eb4b924a9d397d5ab1158578003",
+          "records": 6,
+          "outcome": "captured"
+        },
+        {
+          "path": "ml_model/data/final/raw/cc-index/clermonthealthohio.gov.jsonl",
+          "sha256": "921dc57030be24821638818df67e04491738297ffbfbac701508c8f91fcb5a65",
+          "records": 19,
+          "outcome": "captured"
+        },
+        {
+          "path": "ml_model/data/final/raw/cc-index/clubforster.com.au.jsonl",
+          "sha256": "3fc7a235fbeec9adaa47519b0ae7f97f4cebe35cb049b006a9ab912df6c9241c",
+          "records": 15,
+          "outcome": "captured"
+        },
+        {
+          "path": "ml_model/data/final/raw/cc-index/cobramregionalcare.com.au.jsonl",
+          "sha256": "fa8aebb0f9eb48a17b4d96f39946dabc60a9c0dd1c39762c1ce0477e7d01c425",
+          "records": 7,
+          "outcome": "captured"
+        },
+        {
+          "path": "ml_model/data/final/raw/cc-index/comm-unityplus.org.au.jsonl",
+          "sha256": "57f984c16441d65f4e75e71cdc9dfb991eed48f6e7ef6e1c5d90866f75629a4f",
+          "records": 96,
+          "outcome": "captured"
+        },
+        {
+          "path": "ml_model/data/final/raw/cc-index/conservationecologycentre.org.jsonl",
+          "sha256": "d6177a1f7145a12b9f6ef70c73a9334ec01df374b9f685d84eefd57b89397003",
+          "records": 22,
+          "outcome": "captured"
+        },
+        {
+          "path": "ml_model/data/final/raw/cc-index/csbb.catholic.edu.au.jsonl",
+          "sha256": "f339964726872af7929ef2d1d3c81fd757745fda24a1ee876660e3b0186f3ec4",
+          "records": 97,
+          "outcome": "captured"
+        },
+        {
+          "path": "ml_model/data/final/raw/cc-index/cybermaryland.gov.jsonl",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "records": 0,
+          "outcome": "no_matching_captures"
+        },
+        {
+          "path": "ml_model/data/final/raw/cc-index/dcpudwa.gov.jsonl",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "records": 0,
+          "outcome": "no_matching_captures"
+        },
+        {
+          "path": "ml_model/data/final/raw/cc-index/emmauscc.sa.edu.au.jsonl",
+          "sha256": "03ff52ca542fb1e83363d4db349269e1eea1a62c8753f45d428a62c39ce3fcc4",
+          "records": 116,
+          "outcome": "captured"
+        },
+        {
+          "path": "ml_model/data/final/raw/cc-index/esatn.gov.jsonl",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "records": 0,
+          "outcome": "no_matching_captures"
+        },
+        {
+          "path": "ml_model/data/final/raw/cc-index/esquirebank.com.jsonl",
+          "sha256": "bba1329700569002700db51530b65c61b31227fecbb2ffe5ff51fb8079eaebe9",
+          "records": 282,
+          "outcome": "captured"
+        },
+        {
+          "path": "ml_model/data/final/raw/cc-index/etowahwaterga.gov.jsonl",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "records": 0,
+          "outcome": "no_matching_captures"
+        },
+        {
+          "path": "ml_model/data/final/raw/cc-index/fairbridge.asn.au.jsonl",
+          "sha256": "20470b1985de999980e1f00c43b456d9c74407cf681a2d4ba32112e3175c4fa6",
+          "records": 6,
+          "outcome": "captured"
+        },
+        {
+          "path": "ml_model/data/final/raw/cc-index/familyservices.org.au.jsonl",
+          "sha256": "de85fada2173e72f0979ce0956f7293b8424ad62ff9c4b947d4c6840b00bb709",
+          "records": 43,
+          "outcome": "captured"
+        },
+        {
+          "path": "ml_model/data/final/raw/cc-index/ffin.com.jsonl",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "records": 0,
+          "outcome": "no_matching_captures"
+        },
+        {
+          "path": "ml_model/data/final/raw/cc-index/findtreatment.gov.jsonl",
+          "sha256": "d431b246c215c3daa02442fd1a2bd979f6b7d7c71a5bc12fe6b67883b1018a57",
+          "records": 185,
+          "outcome": "captured"
+        },
+        {
+          "path": "ml_model/data/final/raw/cc-index/firstbankmidwest.com.jsonl",
+          "sha256": "104920debecbd5a902c3e5ba67741fd3235449e0b66eb90e2acf191990621d9b",
+          "records": 3,
+          "outcome": "captured"
+        },
+        {
+          "path": "ml_model/data/final/raw/cc-index/firstmid.com.jsonl",
+          "sha256": "296ad32eda222418bbf69c1429b3a91cd8b13e756a93054dcf7f9aa7785c379a",
+          "records": 179,
+          "outcome": "captured"
+        },
+        {
+          "path": "ml_model/data/final/raw/cc-index/firstservicebank.com.jsonl",
+          "sha256": "6c3aebed2ab78b77aa599e03c8ef4abc11979a28b1078e9631a8ec784df7f6ce",
+          "records": 168,
+          "outcome": "captured"
+        },
+        {
+          "path": "ml_model/data/final/raw/cc-index/floridasunshine.gov.jsonl",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "records": 0,
+          "outcome": "no_matching_captures"
+        },
+        {
+          "path": "ml_model/data/final/raw/cc-index/flunclaimedfunds.gov.jsonl",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "records": 0,
+          "outcome": "no_matching_captures"
+        },
+        {
+          "path": "ml_model/data/final/raw/cc-index/flysbd.gov.jsonl",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "records": 0,
+          "outcome": "no_matching_captures"
+        },
+        {
+          "path": "ml_model/data/final/raw/cc-index/forestvillemontessori.nsw.edu.au.jsonl",
+          "sha256": "9e715562f179827f219190d4f8e14e4428feadd74802244bd597f859c9f73f44",
+          "records": 189,
+          "outcome": "captured"
+        },
+        {
+          "path": "ml_model/data/final/raw/cc-index/frazierparkpudca.gov.jsonl",
+          "sha256": "4e8e8d20beb18a4312f9df489db5bc6d44c2701924044a4cb950cfa9b8b72d1c",
+          "records": 53,
+          "outcome": "captured"
+        },
+        {
+          "path": "ml_model/data/final/raw/cc-index/gawsaor.gov.jsonl",
+          "sha256": "a8e3d9e2ca65821bb8ca87aa712199b4754d9a002649004e5b7c0e031141f598",
+          "records": 97,
+          "outcome": "captured"
+        },
+        {
+          "path": "ml_model/data/final/raw/cc-index/goalcollege.nsw.edu.au.jsonl",
+          "sha256": "6781b2462281d07c302489a66b0fb86519d22643b7669c1032dace30a09020b9",
+          "records": 4,
+          "outcome": "captured"
+        },
+        {
+          "path": "ml_model/data/final/raw/cc-index/hanoverbank.com.jsonl",
+          "sha256": "4365f0a1d9527915728097bb91f89185d63f59ddeda8f74c78a61d3347c63b85",
+          "records": 28,
+          "outcome": "captured"
+        },
+        {
+          "path": "ml_model/data/final/raw/cc-index/hollowayagedcare.com.au.jsonl",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "records": 0,
+          "outcome": "no_matching_captures"
+        },
+        {
+          "path": "ml_model/data/final/raw/cc-index/inlife.org.au.jsonl",
+          "sha256": "d663df6f03fa30b9156aece25714bc48f8025b907af9894bd060ddbe3282c96d",
+          "records": 113,
+          "outcome": "captured"
+        },
+        {
+          "path": "ml_model/data/final/raw/cc-index/innovateohio.gov.jsonl",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "records": 0,
+          "outcome": "no_matching_captures"
+        },
+        {
+          "path": "ml_model/data/final/raw/cc-index/iowastate.bank.jsonl",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "records": 0,
+          "outcome": "no_matching_captures"
+        },
+        {
+          "path": "ml_model/data/final/raw/cc-index/iowaworks.gov.jsonl",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "records": 0,
+          "outcome": "no_matching_captures"
+        },
+        {
+          "path": "ml_model/data/final/raw/cc-index/ipdc.org.au.jsonl",
+          "sha256": "e9ffa8da8e6a04c1beeb4db8929b5607e57d95bc88dd0d778e8876a78ed0799f",
+          "records": 1,
+          "outcome": "captured"
+        },
+        {
+          "path": "ml_model/data/final/raw/cc-index/ivesbank.com.jsonl",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "records": 0,
+          "outcome": "no_matching_captures"
+        },
+        {
+          "path": "ml_model/data/final/raw/cc-index/jjf.org.au.jsonl",
+          "sha256": "b2253ca5f5be69f69e28ad679101888c7d12fc89190cb6133a5364a0e696333c",
+          "records": 21,
+          "outcome": "captured"
+        },
+        {
+          "path": "ml_model/data/final/raw/cc-index/kansasui.gov.jsonl",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "records": 0,
+          "outcome": "no_matching_captures"
+        },
+        {
+          "path": "ml_model/data/final/raw/cc-index/kingsbaptist.sa.edu.au.jsonl",
+          "sha256": "64662e9ce9beb184fc6db14006f6f08a9bd0031522ae738a37eace5286a4e335",
+          "records": 103,
+          "outcome": "captured"
+        },
+        {
+          "path": "ml_model/data/final/raw/cc-index/kingsley.qld.edu.au.jsonl",
+          "sha256": "7484cf50a7736dcd89fa4b50cfcd8df8456d8292a0e004963ba7016962d56226",
+          "records": 37,
+          "outcome": "captured"
+        },
+        {
+          "path": "ml_model/data/final/raw/cc-index/kuyper.nsw.edu.au.jsonl",
+          "sha256": "f20d3d816f7047fcd76b2609b8a272fc9aa370d569b7b1233fa0513b6b1ea391",
+          "records": 111,
+          "outcome": "captured"
+        },
+        {
+          "path": "ml_model/data/final/raw/cc-index/ledyard.bank.jsonl",
+          "sha256": "6ba711d0b601fa523857bec589f91dbcbe2354e3fcd52fa034e0afe16e12796a",
+          "records": 92,
+          "outcome": "captured"
+        },
+        {
+          "path": "ml_model/data/final/raw/cc-index/lighthousecare.org.au.jsonl",
+          "sha256": "5715b59819e881e06a54113dbc12822a38063fbca89d4310ef5aec41bb1cf442",
+          "records": 288,
+          "outcome": "captured"
+        },
+        {
+          "path": "ml_model/data/final/raw/cc-index/loreto.qld.edu.au.jsonl",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "records": 0,
+          "outcome": "no_matching_captures"
+        },
+        {
+          "path": "ml_model/data/final/raw/cc-index/maamgiingana.nsw.edu.au.jsonl",
+          "sha256": "cf8411e31fd6c12285abb276ea12b56257c52597c8416742b8f2d3c9cf8a80ce",
+          "records": 28,
+          "outcome": "captured"
+        },
+        {
+          "path": "ml_model/data/final/raw/cc-index/mackaywomensservices.org.au.jsonl",
+          "sha256": "69c214ff6bb7767f38b7d2dec1a565167924cc7d3af0ed7cdca99ffb7975e899",
+          "records": 7,
+          "outcome": "captured"
+        },
+        {
+          "path": "ml_model/data/final/raw/cc-index/macsinc.org.au.jsonl",
+          "sha256": "403d047f76a22d49234145c43a96bcadb189a60aa1f84e68c3898ecf203648ed",
+          "records": 15,
+          "outcome": "captured"
+        },
+        {
+          "path": "ml_model/data/final/raw/cc-index/marysvilleboroughstormwater.gov.jsonl",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "records": 0,
+          "outcome": "no_matching_captures"
+        },
+        {
+          "path": "ml_model/data/final/raw/cc-index/maxima.com.au.jsonl",
+          "sha256": "b7f8419e149268a69391772d0e87951e9ef4381859087702af9762a18e7ea617",
+          "records": 86,
+          "outcome": "captured"
+        },
+        {
+          "path": "ml_model/data/final/raw/cc-index/mdqld.org.au.jsonl",
+          "sha256": "5ff40f8722b58b861802ef0898c0cf8257f1fb31b2fa6be879c65c1c1b80c438",
+          "records": 29,
+          "outcome": "captured"
+        },
+        {
+          "path": "ml_model/data/final/raw/cc-index/melaleuca.org.au.jsonl",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "records": 0,
+          "outcome": "no_matching_captures"
+        },
+        {
+          "path": "ml_model/data/final/raw/cc-index/middletownusdca.gov.jsonl",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "records": 0,
+          "outcome": "no_matching_captures"
+        },
+        {
+          "path": "ml_model/data/final/raw/cc-index/minaret.vic.edu.au.jsonl",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "records": 0,
+          "outcome": "no_matching_captures"
+        },
+        {
+          "path": "ml_model/data/final/raw/cc-index/mris.wa.edu.au.jsonl",
+          "sha256": "22443084b588394b23fad6eb3956bca91523790ea88243177a836265922c085c",
+          "records": 221,
+          "outcome": "captured"
+        },
+        {
+          "path": "ml_model/data/final/raw/cc-index/mununjali.com.au.jsonl",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "records": 0,
+          "outcome": "no_matching_captures"
+        },
+        {
+          "path": "ml_model/data/final/raw/cc-index/mycentral.bank.jsonl",
+          "sha256": "860dd48c70838d172fc91937f69ecf4688fcfe586ba837d124b7bb834fc5612c",
+          "records": 31,
+          "outcome": "captured"
+        },
+        {
+          "path": "ml_model/data/final/raw/cc-index/ncdor.gov.jsonl",
+          "sha256": "3e53df610be3d7d3bb568f2fafdfe35a773095deed2fecce34534a035658d709",
+          "records": 1695,
+          "outcome": "captured"
+        },
+        {
+          "path": "ml_model/data/final/raw/cc-index/nhcsdia.gov.jsonl",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "records": 0,
+          "outcome": "no_matching_captures"
+        },
+        {
+          "path": "ml_model/data/final/raw/cc-index/njib.gov.jsonl",
+          "sha256": "53bf7e098f1040180223b52dbc3c6a552033d8e6c3424935762a51731bf8beba",
+          "records": 343,
+          "outcome": "captured"
+        },
+        {
+          "path": "ml_model/data/final/raw/cc-index/njoag.gov.jsonl",
+          "sha256": "077514dc87126a949decb15065692c1957ba1861eda4c0fbb0c2df4488caaef5",
+          "records": 7,
+          "outcome": "captured"
+        },
+        {
+          "path": "ml_model/data/final/raw/cc-index/nlrwu.gov.jsonl",
+          "sha256": "d1e160a8dd585bb2c9ed5e22f01ffb4aacc7fe6c6eabaa7054c9fca0491c4af0",
+          "records": 9,
+          "outcome": "captured"
+        },
+        {
+          "path": "ml_model/data/final/raw/cc-index/nunku.org.au.jsonl",
+          "sha256": "577bc3270361840f1905e4822aaae6e7024b6136d992ca65e8a6d4238cfe9b36",
+          "records": 9,
+          "outcome": "captured"
+        },
+        {
+          "path": "ml_model/data/final/raw/cc-index/nvprepaid.gov.jsonl",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "records": 0,
+          "outcome": "no_matching_captures"
+        },
+        {
+          "path": "ml_model/data/final/raw/cc-index/octa.gov.jsonl",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "records": 0,
+          "outcome": "no_matching_captures"
+        },
+        {
+          "path": "ml_model/data/final/raw/cc-index/ohioagriculture.gov.jsonl",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "records": 0,
+          "outcome": "no_matching_captures"
+        },
+        {
+          "path": "ml_model/data/final/raw/cc-index/ovbc.com.jsonl",
+          "sha256": "4c32d2cc4d11d4c296f8e53a29f86ac425afe7c240fb6f672a815f3db4d9e11a",
+          "records": 53,
+          "outcome": "captured"
+        },
+        {
+          "path": "ml_model/data/final/raw/cc-index/pentucketbank.com.jsonl",
+          "sha256": "311f7123271c7470e995c6c6ca51eea2cae25ce95737782ac2615d0b9059a25e",
+          "records": 70,
+          "outcome": "captured"
+        },
+        {
+          "path": "ml_model/data/final/raw/cc-index/peoplesnationalbank.com.jsonl",
+          "sha256": "170509acdae2b151dbe3f89c3364536f7d44366bf38b1fc2520827509d3087c0",
+          "records": 41,
+          "outcome": "captured"
+        },
+        {
+          "path": "ml_model/data/final/raw/cc-index/piedmontfederal.bank.jsonl",
+          "sha256": "3d9f7ae402635261fbaf5597ff75a6dc53df0a733888b2ab6cd937ea8e391c40",
+          "records": 19,
+          "outcome": "captured"
+        },
+        {
+          "path": "ml_model/data/final/raw/cc-index/pikemowatersupply.gov.jsonl",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "records": 0,
+          "outcome": "no_matching_captures"
+        },
+        {
+          "path": "ml_model/data/final/raw/cc-index/pnhome.com.au.jsonl",
+          "sha256": "0e715fbb06d7233315b105bce11c738969f9b6b80682300505111cf395f760d7",
+          "records": 1,
+          "outcome": "captured"
+        },
+        {
+          "path": "ml_model/data/final/raw/cc-index/polkswcdiowa.gov.jsonl",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "records": 0,
+          "outcome": "no_matching_captures"
+        },
+        {
+          "path": "ml_model/data/final/raw/cc-index/primarycareconnect.com.au.jsonl",
+          "sha256": "f176843ad1ba2ed8d571663df570afc1f00fe9488f756befe82936b41a613372",
+          "records": 12,
+          "outcome": "captured"
+        },
+        {
+          "path": "ml_model/data/final/raw/cc-index/pwsd1maconco.gov.jsonl",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "records": 0,
+          "outcome": "no_matching_captures"
+        },
+        {
+          "path": "ml_model/data/final/raw/cc-index/rilegislature.gov.jsonl",
+          "sha256": "82ef23e4290e839a6e4743a1fc3d4bf953f6e345c0cc17b7d2a0d391c8483d24",
+          "records": 1216,
+          "outcome": "captured"
+        },
+        {
+          "path": "ml_model/data/final/raw/cc-index/ruralbusinesssupport.org.au.jsonl",
+          "sha256": "ef7b10732de3d19b876f3be21a0219d392f21de8a9f6b648a50e62243a319731",
+          "records": 26,
+          "outcome": "captured"
+        },
+        {
+          "path": "ml_model/data/final/raw/cc-index/ruralmeded.org.au.jsonl",
+          "sha256": "7cb8eb5ba6a9442758a220bc3469ed70e22c8528246924dc354820ab6331cf73",
+          "records": 2,
+          "outcome": "captured"
+        },
+        {
+          "path": "ml_model/data/final/raw/cc-index/ryewaterdistrict.gov.jsonl",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "records": 0,
+          "outcome": "no_matching_captures"
+        },
+        {
+          "path": "ml_model/data/final/raw/cc-index/sanpetewaterconservancy.gov.jsonl",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "records": 0,
+          "outcome": "no_matching_captures"
+        },
+        {
+          "path": "ml_model/data/final/raw/cc-index/sharetheroadsafely.gov.jsonl",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "records": 0,
+          "outcome": "no_matching_captures"
+        },
+        {
+          "path": "ml_model/data/final/raw/cc-index/soldieron.org.au.jsonl",
+          "sha256": "385231608e90d4087305fe4a6f1d9e166e59ecb70585b638b594e34d01e0f771",
+          "records": 219,
+          "outcome": "captured"
+        },
+        {
+          "path": "ml_model/data/final/raw/cc-index/somersettrust.com.jsonl",
+          "sha256": "a23a550e81a384770fb5f0bcb3227df2c013cf3fff6dea07012aa58d910514dc",
+          "records": 44,
+          "outcome": "captured"
+        },
+        {
+          "path": "ml_model/data/final/raw/cc-index/stannasagedcare.com.au.jsonl",
+          "sha256": "e2c606a06750f9be7dc7e94666a7942e426cd495da3113c79c0b4c1af25e293c",
+          "records": 2,
+          "outcome": "captured"
+        },
+        {
+          "path": "ml_model/data/final/raw/cc-index/stemcelldonors.org.au.jsonl",
+          "sha256": "45a4b429c34d5270f8209b9ffd26e9f181ee00238e17dd39232111b253fa21d8",
+          "records": 53,
+          "outcome": "captured"
+        },
+        {
+          "path": "ml_model/data/final/raw/cc-index/steppingstonehouse.com.au.jsonl",
+          "sha256": "a65f3ac9e40b4cf81806a1262c1be855144cc54a7d7d6f02375130672218ef74",
+          "records": 26,
+          "outcome": "captured"
+        },
+        {
+          "path": "ml_model/data/final/raw/cc-index/stjohnspreston.vic.edu.au.jsonl",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "records": 0,
+          "outcome": "no_matching_captures"
+        },
+        {
+          "path": "ml_model/data/final/raw/cc-index/straphaelscowra.catholic.edu.au.jsonl",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "records": 0,
+          "outcome": "no_matching_captures"
+        },
+        {
+          "path": "ml_model/data/final/raw/cc-index/surgeongeneral.gov.jsonl",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "records": 0,
+          "outcome": "no_matching_captures"
+        },
+        {
+          "path": "ml_model/data/final/raw/cc-index/svlh.gov.jsonl",
+          "sha256": "c4fd60b6c7b2871854ae4f3ad4009b3ad8b532554894dda95105e3828abae4e6",
+          "records": 5,
+          "outcome": "captured"
+        },
+        {
+          "path": "ml_model/data/final/raw/cc-index/swcc.wa.edu.au.jsonl",
+          "sha256": "7def05615cfe786613d46fabb6e14bf49e5facd786810402136ebae64a1459c4",
+          "records": 1,
+          "outcome": "captured"
+        },
+        {
+          "path": "ml_model/data/final/raw/cc-index/swmetrowsdco.gov.jsonl",
+          "sha256": "7b8c798a49bb51b3d3ea63111dfd75858027f20f23752a6e16013c864778c5da",
+          "records": 24,
+          "outcome": "captured"
+        },
+        {
+          "path": "ml_model/data/final/raw/cc-index/tcc.sa.edu.au.jsonl",
+          "sha256": "9c19c7e7f376e58ea7d25dc9b2dc1fd653c0dbddaea3d44cfee1d03da43b3c68",
+          "records": 73,
+          "outcome": "captured"
+        },
+        {
+          "path": "ml_model/data/final/raw/cc-index/tennesseereconnect.gov.jsonl",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "records": 0,
+          "outcome": "no_matching_captures"
+        },
+        {
+          "path": "ml_model/data/final/raw/cc-index/texasonline.gov.jsonl",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "records": 0,
+          "outcome": "no_matching_captures"
+        },
+        {
+          "path": "ml_model/data/final/raw/cc-index/thebaysagedcare.org.au.jsonl",
+          "sha256": "2b68e8d1d3c5f879e4f1f6e1deaaa16ac1bb5f7ce6702023e2696fafbdc1efa3",
+          "records": 2,
+          "outcome": "captured"
+        },
+        {
+          "path": "ml_model/data/final/raw/cc-index/thompsonvalleyems.gov.jsonl",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "records": 0,
+          "outcome": "no_matching_captures"
+        },
+        {
+          "path": "ml_model/data/final/raw/cc-index/transparencyflorida.gov.jsonl",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "records": 0,
+          "outcome": "no_matching_captures"
+        },
+        {
+          "path": "ml_model/data/final/raw/cc-index/tricountyhealthut.gov.jsonl",
+          "sha256": "cdac36842b9ee39cecc14b40b1a47fd07dca46ff634c7a17a777a429d079da09",
+          "records": 30,
+          "outcome": "captured"
+        },
+        {
+          "path": "ml_model/data/final/raw/cc-index/tworiversswcd.gov.jsonl",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "records": 0,
+          "outcome": "no_matching_captures"
+        },
+        {
+          "path": "ml_model/data/final/raw/cc-index/vfff.org.au.jsonl",
+          "sha256": "869e7492bf421cc90a293441f9fb2ba1fff2442c0ac7c93d10caab16e6719f71",
+          "records": 58,
+          "outcome": "captured"
+        },
+        {
+          "path": "ml_model/data/final/raw/cc-index/vnb.com.jsonl",
+          "sha256": "a2ed311d46098d3bfeb66fa4496c9ad92a7534e2807b2cca5eb96dc3362667d3",
+          "records": 80,
+          "outcome": "captured"
+        },
+        {
+          "path": "ml_model/data/final/raw/cc-index/wvunclaimedproperty.gov.jsonl",
+          "sha256": "8095c54d418edf632fafb4defd2b612afd022ac6fbeb7d972117930f3be26045",
+          "records": 1,
+          "outcome": "captured"
+        },
+        {
+          "path": "ml_model/data/final/raw/cc-index/wyopen.gov.jsonl",
+          "sha256": "7c64f490d0715ff826c47d3ed6e06461816d689f320860ae5cfb1cf656157378",
+          "records": 5,
+          "outcome": "captured"
+        }
+      ]
+    },
+    "phishtank_verified_online": {
+      "label": "phishing",
+      "publisher": "PhishTank, operated by Cisco Talos Intelligence Group",
+      "access_url": "https://data.phishtank.com/data/online-valid.csv",
+      "documentation_url": "https://phishtank.org/developer_info.php",
+      "snapshot_downloaded_at_utc": "2026-11-22T10:56:20Z",
+      "terms": "Checked 2026-11-22 (docs/final_model_evaluation_plan.md section 6.2). Stated: free to everyone, website and data via the API (https://phishtank.org/faq.php); commercial and non-commercial API use allowed; open API for researchers (https://phishtank.org/); bulk files offered on https://phishtank.org/developer_info.php. Interpretation: the free-use statement covers the bulk file, but no page says so explicitly. Attribution and redistribution are not stated; cite PhishTank and publish aggregates only.",
+      "label_definition": "Phishing: listed in PhishTank's online-valid file (verified as a phish by the PhishTank community and online at snapshot time). observed_at is the per-row verification_time.",
+      "timestamp_field": "verification_time",
+      "sampling_rule": "All rows of one snapshot with verification_time after the cutoff, converted with convert-phishtank; then the protocol's cleaning and balanced sampling.",
+      "coverage_notes": "Online-only: phishes taken down before the snapshot are absent, so short-lived campaigns are under-represented. Community-submitted, English-language and brand-concentrated coverage.",
+      "raw_files": [
+        {
+          "path": "ml_model/data/final/raw/online-valid.csv",
+          "sha256": "c1db91b4479296c81a2c1450df5a0690815a201237d6224d8e2af01ae8e0acf8",
+          "rows": 42974,
+          "server_last_modified": "Sun, 22 Nov 2026 10:21:55 GMT"
+        }
+      ]
+    }
+  },
+  "test_source_problems": [],
+  "historical_sources": [
+    {
+      "name": "phishtank_snapshot_2026_08",
+      "status": "verified",
+      "detail": "phishtank_snapshot_2026_08.csv (SHA-256 verified)",
+      "sha256": "a55aa3b2b1314ae3d7715ee6d56527366afe7bc616fe45f0b87fcd4a57b52240",
+      "rows": 73945,
+      "normalized_urls": 73202,
+      "registrable_domains": 28792,
+      "unparseable_rows": 7
+    },
+    {
+      "name": "legitimate_status_archive",
+      "status": "verified",
+      "detail": "legitimate_status_archive.zip (SHA-256 verified)",
+      "sha256": "3b888fbf950e34cc04716c9f57da139c586bdc4e1f95c2940f6ad471456390ce",
+      "rows": 822010,
+      "normalized_urls": 792963,
+      "registrable_domains": 351306,
+      "unparseable_rows": 1866
+    },
+    {
+      "name": "tranco_5674N_homepages",
+      "status": "verified",
+      "detail": "tranco_5674N.zip (SHA-256 verified)",
+      "sha256": "6ef97b3268dacf46ff4ac1ac70cfba18fb413c2d5eb39d83a1e1d12405ca24e4",
+      "rows": 36966,
+      "normalized_urls": 36966,
+      "registrable_domains": 36966,
+      "unparseable_rows": 0
+    },
+    {
+      "name": "precomputed_feature_dataset",
+      "status": "out_of_scope",
+      "detail": "Outside the scope of this evaluation of the current 18-feature model: see protocol.json evaluation_scope.excluded_historical_sources. Approved with the protocol on 2026-11-22.",
+      "sha256": "204c226d6b6126a40423084ce9d1391a162d0545f451b858464c1b9b742a8900",
+      "rows": 0,
+      "normalized_urls": 0,
+      "registrable_domains": 0,
+      "unparseable_rows": 0
+    },
+    {
+      "name": "synthetic_demo_fixture",
+      "status": "verified",
+      "detail": "regenerated deterministically",
+      "sha256": "5146cbe40d20e85f9b0de753876712f956c74efb36ab068767a334480a03f311",
+      "rows": 600,
+      "normalized_urls": 386,
+      "registrable_domains": 92,
+      "unparseable_rows": 0
+    }
+  ],
+  "overlap_check": {
+    "checked_sources": [
+      "phishtank_snapshot_2026_08",
+      "legitimate_status_archive",
+      "tranco_5674N_homepages",
+      "synthetic_demo_fixture"
+    ],
+    "out_of_scope_sources": [
+      {
+        "name": "precomputed_feature_dataset",
+        "decision": "Outside the scope of this evaluation of the current 18-feature model: see protocol.json evaluation_scope.excluded_historical_sources. Approved with the protocol on 2026-11-22."
+      }
+    ],
+    "unchecked_sources": [],
+    "scope_problems": [],
+    "statement": "Disjoint (normalized URL and registrable domain) from every checked historical source listed. Not checked, by recorded scope decision: precomputed_feature_dataset. Overlap with those sources is unknown; the result is an assessment of the current model only."
+  },
+  "cleaning_steps": [
+    {
+      "step": "input_rows_after_validation",
+      "remaining": {
+        "total": 45364,
+        "by_class": {
+          "legitimate": 2401,
+          "phishing": 42963
+        },
+        "by_source": {
+          "commoncrawl_cc_main_2026_43_official": {
+            "legitimate": 2401
+          },
+          "phishtank_verified_online": {
+            "phishing": 42963
+          }
+        }
+      }
+    },
+    {
+      "step": "rejected_malformed_rows",
+      "removed_rows": 0
+    },
+    {
+      "step": "removed_at_or_before_cutoff",
+      "removed": {
+        "total": 39560,
+        "by_class": {
+          "legitimate": 0,
+          "phishing": 39560
+        },
+        "by_source": {
+          "phishtank_verified_online": {
+            "phishing": 39560
+          }
+        }
+      },
+      "remaining": {
+        "total": 5804,
+        "by_class": {
+          "legitimate": 2401,
+          "phishing": 3403
+        },
+        "by_source": {
+          "commoncrawl_cc_main_2026_43_official": {
+            "legitimate": 2401
+          },
+          "phishtank_verified_online": {
+            "phishing": 3403
+          }
+        }
+      }
+    },
+    {
+      "step": "exact_duplicates_after_normalization",
+      "removed": {
+        "total": 48,
+        "by_class": {
+          "legitimate": 0,
+          "phishing": 48
+        },
+        "by_source": {
+          "phishtank_verified_online": {
+            "phishing": 48
+          }
+        }
+      },
+      "remaining": {
+        "total": 5756,
+        "by_class": {
+          "legitimate": 2401,
+          "phishing": 3355
+        },
+        "by_source": {
+          "commoncrawl_cc_main_2026_43_official": {
+            "legitimate": 2401
+          },
+          "phishtank_verified_online": {
+            "phishing": 3355
+          }
+        }
+      }
+    },
+    {
+      "step": "near_duplicates_by_template",
+      "removed": {
+        "total": 582,
+        "by_class": {
+          "legitimate": 509,
+          "phishing": 73
+        },
+        "by_source": {
+          "commoncrawl_cc_main_2026_43_official": {
+            "legitimate": 509
+          },
+          "phishtank_verified_online": {
+            "phishing": 73
+          }
+        }
+      },
+      "remaining": {
+        "total": 5174,
+        "by_class": {
+          "legitimate": 1892,
+          "phishing": 3282
+        },
+        "by_source": {
+          "commoncrawl_cc_main_2026_43_official": {
+            "legitimate": 1892
+          },
+          "phishtank_verified_online": {
+            "phishing": 3282
+          }
+        }
+      }
+    },
+    {
+      "step": "historical_normalized_url_overlap",
+      "removed": {
+        "total": 7,
+        "by_class": {
+          "legitimate": 0,
+          "phishing": 7
+        },
+        "by_source": {
+          "phishtank_verified_online": {
+            "phishing": 7
+          }
+        }
+      },
+      "matched_sources": {
+        "phishtank_snapshot_2026_08": 7
+      },
+      "remaining": {
+        "total": 5167,
+        "by_class": {
+          "legitimate": 1892,
+          "phishing": 3275
+        },
+        "by_source": {
+          "commoncrawl_cc_main_2026_43_official": {
+            "legitimate": 1892
+          },
+          "phishtank_verified_online": {
+            "phishing": 3275
+          }
+        }
+      }
+    },
+    {
+      "step": "historical_registrable_domain_overlap",
+      "removed": {
+        "total": 445,
+        "by_class": {
+          "legitimate": 0,
+          "phishing": 445
+        },
+        "by_source": {
+          "phishtank_verified_online": {
+            "phishing": 445
+          }
+        }
+      },
+      "matched_sources": {
+        "phishtank_snapshot_2026_08": 420,
+        "tranco_5674N_homepages": 206,
+        "legitimate_status_archive": 249
+      },
+      "remaining": {
+        "total": 4722,
+        "by_class": {
+          "legitimate": 1892,
+          "phishing": 2830
+        },
+        "by_source": {
+          "commoncrawl_cc_main_2026_43_official": {
+            "legitimate": 1892
+          },
+          "phishtank_verified_online": {
+            "phishing": 2830
+          }
+        }
+      }
+    },
+    {
+      "step": "conflicting_labels",
+      "conflicting_normalized_urls": 0,
+      "removed": {
+        "total": 0,
+        "by_class": {
+          "legitimate": 0,
+          "phishing": 0
+        },
+        "by_source": {}
+      },
+      "remaining": {
+        "total": 4722,
+        "by_class": {
+          "legitimate": 1892,
+          "phishing": 2830
+        },
+        "by_source": {
+          "commoncrawl_cc_main_2026_43_official": {
+            "legitimate": 1892
+          },
+          "phishtank_verified_online": {
+            "phishing": 2830
+          }
+        }
+      }
+    },
+    {
+      "step": "per_domain_cap",
+      "max_per_registrable_domain": 20,
+      "removed": {
+        "total": 734,
+        "by_class": {
+          "legitimate": 734,
+          "phishing": 0
+        },
+        "by_source": {
+          "commoncrawl_cc_main_2026_43_official": {
+            "legitimate": 734
+          }
+        }
+      },
+      "remaining": {
+        "total": 3988,
+        "by_class": {
+          "legitimate": 1158,
+          "phishing": 2830
+        },
+        "by_source": {
+          "commoncrawl_cc_main_2026_43_official": {
+            "legitimate": 1158
+          },
+          "phishtank_verified_online": {
+            "phishing": 2830
+          }
+        }
+      }
+    },
+    {
+      "step": "balanced_sampling",
+      "method": "after cleaning, keep at most max_per_registrable_domain rows per class and registrable domain (lowest SHA-256 of 'seed:normalized URL' first); then sort each class by normalized URL and draw min(n_legitimate, n_phishing, maximum_rows_per_class) rows from each class without replacement using random.Random(seed).sample (legitimate first, then phishing)",
+      "seed": 42,
+      "removed": {
+        "total": 1988
+      },
+      "remaining": {
+        "total": 2000,
+        "by_class": {
+          "legitimate": 1000,
+          "phishing": 1000
+        },
+        "by_source": {
+          "commoncrawl_cc_main_2026_43_official": {
+            "legitimate": 1000
+          },
+          "phishtank_verified_online": {
+            "phishing": 1000
+          }
+        }
+      }
+    }
+  ],
+  "template_leakage": {
+    "before_overlap_removal": {
+      "rows": 5174,
+      "sharing_host_with_history": 173,
+      "sharing_path_template_with_history": 35
+    },
+    "after_cleaning": {
+      "rows": 3988,
+      "sharing_host_with_history": 0,
+      "sharing_path_template_with_history": 0
+    }
+  },
+  "class_balance": {
+    "after_cleaning": {
+      "legitimate": 1158,
+      "phishing": 2830
+    },
+    "after_cleaning_phishing_share": 0.709629,
+    "evaluated": {
+      "legitimate": 1000,
+      "phishing": 1000
+    },
+    "evaluated_phishing_share": 0.5,
+    "note": "Accuracy and PR-AUC depend on the class composition of the test set; PR-AUC for a random ranking equals the phishing share (0.5 here). Precision for each class also depends on prevalence, so results do not transfer directly to a different mix."
+  },
+  "metrics": {
+    "rows": 2000,
+    "threshold": 0.5,
+    "confusion_matrix": [
+      [
+        892,
+        108
+      ],
+      [
+        225,
+        775
+      ]
+    ],
+    "confusion_matrix_order": "[[TN, FP], [FN, TP]] with phishing as the positive class",
+    "true_negatives": 892,
+    "false_positives": 108,
+    "false_negatives": 225,
+    "true_positives": 775,
+    "accuracy": 0.8335,
+    "per_class": {
+      "legitimate": {
+        "precision": 0.798568,
+        "recall": 0.892,
+        "f1": 0.842702,
+        "support": 1000
+      },
+      "phishing": {
+        "precision": 0.87769,
+        "recall": 0.775,
+        "f1": 0.823155,
+        "support": 1000
+      }
+    },
+    "roc_auc": 0.887385,
+    "pr_auc": 0.910854,
+    "pr_auc_method": "Average precision with phishing as the positive class: sum over descending score thresholds of (R_n - R_{n-1}) * P_n (sklearn.metrics.average_precision_score); step-wise, not trapezoidal."
+  },
+  "breakdown": {
+    "by_source": {
+      "commoncrawl_cc_main_2026_43_official (legitimate)": {
+        "rows": 1000,
+        "correct": 892,
+        "accuracy": 0.892
+      },
+      "phishtank_verified_online (phishing)": {
+        "rows": 1000,
+        "correct": 775,
+        "accuracy": 0.775
+      }
+    },
+    "by_observation_week": {
+      "2026-W36 (phishing)": {
+        "rows": 21,
+        "correct": 13,
+        "accuracy": 0.619048
+      },
+      "2026-W37 (phishing)": {
+        "rows": 38,
+        "correct": 30,
+        "accuracy": 0.789474
+      },
+      "2026-W38 (phishing)": {
+        "rows": 26,
+        "correct": 17,
+        "accuracy": 0.653846
+      },
+      "2026-W39 (phishing)": {
+        "rows": 29,
+        "correct": 23,
+        "accuracy": 0.793103
+      },
+      "2026-W40 (phishing)": {
+        "rows": 21,
+        "correct": 16,
+        "accuracy": 0.761905
+      },
+      "2026-W41 (legitimate)": {
+        "rows": 621,
+        "correct": 549,
+        "accuracy": 0.884058
+      },
+      "2026-W41 (phishing)": {
+        "rows": 44,
+        "correct": 30,
+        "accuracy": 0.681818
+      },
+      "2026-W42 (legitimate)": {
+        "rows": 379,
+        "correct": 343,
+        "accuracy": 0.905013
+      },
+      "2026-W42 (phishing)": {
+        "rows": 62,
+        "correct": 47,
+        "accuracy": 0.758065
+      },
+      "2026-W43 (phishing)": {
+        "rows": 87,
+        "correct": 74,
+        "accuracy": 0.850575
+      },
+      "2026-W44 (phishing)": {
+        "rows": 77,
+        "correct": 55,
+        "accuracy": 0.714286
+      },
+      "2026-W45 (phishing)": {
+        "rows": 150,
+        "correct": 121,
+        "accuracy": 0.806667
+      },
+      "2026-W46 (phishing)": {
+        "rows": 194,
+        "correct": 165,
+        "accuracy": 0.850515
+      },
+      "2026-W47 (phishing)": {
+        "rows": 251,
+        "correct": 184,
+        "accuracy": 0.733068
+      }
+    },
+    "note": "For a phishing group accuracy is recall; for a legitimate group it is specificity."
+  },
+  "limitations": [
+    "Lexical-only model: no page content, hosting, or reputation data.",
+    "Concept drift: the result applies to the collection window only.",
+    "Source coverage: one phishing feed (online, verified entries only) and one benign source built from an official-domain allowlist.",
+    "Label noise in external sources is possible."
+  ]
+}
