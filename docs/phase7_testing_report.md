@@ -95,15 +95,22 @@ The final untouched evaluation ran once on 2026-11-26. Its report is
 and the full explanation is
 [result D in `phase5_ml_detection.md`](phase5_ml_detection.md#d-final_untouched_evaluationjson-the-final-untouched-test).
 
-**Test set:** 2,000 URLs that the model had never seen, all from after its
-training data:
+**Test set:** 2,000 URLs whose source timestamps fall after the approved
+2026-09-01 cutoff:
 
-- **1,000 phishing URLs:** PhishTank, verified 1 Sep – 22 Nov 2026, from 951
-  websites.
-- **1,000 legitimate URLs:** Common Crawl pages captured 5–18 Oct 2026 on 76
-  ownership-checked official websites in Australia and the US.
+- **1,000 phishing URLs:** PhishTank, with `verification_time` from 1 Sep to
+  22 Nov 2026, from 951 websites.
+- **1,000 legitimate URLs:** Common Crawl pages with capture timestamps from 5 to
+  18 Oct 2026, on 76 ownership-checked official websites in Australia and the US.
 
-Websites and page patterns seen during training were removed.
+Any URL, page pattern, or website that appears in the model's development data
+(training, validation, and diagnostic sets) was removed.
+
+These timestamps record when PhishTank verified a report and when Common Crawl
+captured a page. Neither is the date a URL first appeared online, so some test
+URLs may have existed before the model was trained. The guarantee is that none
+of them is in the development data. See
+[Phase 5, "What the dates mean"](phase5_ml_detection.md#what-the-dates-mean-and-what-they-do-not-mean).
 
 | | Predicted legitimate | Predicted phishing |
 | --- | --- | --- |
@@ -122,7 +129,7 @@ In plain terms:
 - **It wrongly warned about 108 of 1,000 genuine pages.** These are false alarms:
   less dangerous than misses, but they can make users ignore warnings.
 - **The scores are a few points below the August validation figures** (87.92%
-  accuracy, 0.955 ROC-AUC). That is expected for later, unseen data, and the
+  accuracy, 0.955 ROC-AUC). That is expected for post-cutoff data that is absent from the development data, and the
   final figures are the ones to report.
 
 **Threshold rationale.** The threshold stayed at 0.5, as fixed in the approved
@@ -143,7 +150,8 @@ one would need new data, because this test set cannot be reused for tuning.
   the model reads **URL text only**.
 - **Unsupported URLs were excluded:** 11 were over 2,048 characters or contained
   spaces (2 after the cutoff).
-- The results describe **September–November 2026**. Phishing changes over time.
+- The results describe URLs with **source timestamps in September–November 2026**.
+  Phishing changes over time.
 
 The report was verified against the approved `protocol.json` before this item was
 marked complete (25 of 25 checks; see Phase 5, result D). Only aggregate results

@@ -9,12 +9,17 @@ and is complete.
 
 ## Final result (2026-11-26)
 
-The current 18-feature model was tested once on **2,000 URLs it had never seen**,
-all first verified or captured after 1 September 2026:
+The current 18-feature model was tested once on **2,000 URLs**. Each one has a
+source timestamp after the approved cutoff of 1 September 2026, and none appears
+in the model's development data:
 
-- **1,000 phishing URLs** from PhishTank.
-- **1,000 legitimate URLs** from 76 official websites in the Common Crawl October
-  2026 crawl.
+- **1,000 phishing URLs** from PhishTank, verified 1 Sep – 22 Nov 2026.
+- **1,000 legitimate URLs** from 76 official websites, captured 5–18 Oct 2026 in
+  the Common Crawl October 2026 crawl.
+
+These are verification and capture times, not the dates the URLs first appeared
+online. See
+[the Phase 5 guide](../docs/phase5_ml_detection.md#what-the-dates-mean-and-what-they-do-not-mean).
 
 | Accuracy | Phishing caught (recall) | Legitimate correctly passed | ROC-AUC | PR-AUC |
 | --- | --- | --- | --- | --- |

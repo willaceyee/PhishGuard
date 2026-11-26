@@ -4,7 +4,8 @@ Phase 5 implements an offline phishing URL classifier using lexical URL features
 
 > **Evaluation status:** The final untouched evaluation is **complete** (run once
 > on 2026-11-26). The current model scored **83.35% accuracy, 0.887 ROC-AUC and
-> 0.911 PR-AUC** on 2,000 URLs first seen after the training data. It caught
+> 0.911 PR-AUC** on 2,000 URLs whose source timestamps fall after the approved
+> 2026-09-01 cutoff and that are absent from its development data. It caught
 > 775 of 1,000 phishing URLs and correctly passed 892 of 1,000 legitimate pages.
 > See [result D](#d-final_untouched_evaluationjson-the-final-untouched-test) and
 > [`final_model_evaluation_plan.md`](final_model_evaluation_plan.md). Results A–C
@@ -200,9 +201,9 @@ threshold, cutoff, sources, cleaning, sample sizes, seed) were approved and
 committed on 2026-11-22, **before** any test data was downloaded. The test ran
 exactly once, from commit `f696db3`, and its report can never be overwritten.
 
-**In one sentence:** on URLs it had never seen, collected after it was trained,
-the model caught about 3 in 4 phishing links and wrongly flagged about 1 in 9
-legitimate pages.
+**In one sentence:** on URLs whose source timestamps fall after the cutoff and
+that do not appear in its development data, the model caught about 3 in 4
+phishing links and wrongly flagged about 1 in 9 legitimate pages.
 
 #### What was tested
 
@@ -210,7 +211,8 @@ legitimate pages.
 | --- | --- | --- |
 | Source | PhishTank `online-valid` snapshot, downloaded 2026-11-22 | Common Crawl October 2026 crawl (`CC-MAIN-2026-43`), index records downloaded 2026-11-26 |
 | Label rule | Verified as phishing by the PhishTank community and still online | Captured page (HTTP 200, HTML) on one of 120 official domains, ownership-checked in government or regulator registers |
-| Dates of evaluated URLs | Verified 1 Sep – 22 Nov 2026 | Captured 5–18 Oct 2026 |
+| Timestamp used | PhishTank `verification_time` | Common Crawl capture timestamp |
+| Timestamps of evaluated URLs | 1 Sep – 22 Nov 2026 | 5–18 Oct 2026 |
 | Usable after cleaning | 2,830 (2,497 domains) | 1,158 (76 domains) |
 | Evaluated (seed 42) | **1,000** from 951 domains | **1,000** from 76 domains |
 
@@ -219,8 +221,35 @@ non-profit 181, transport and utilities 67, government 65. By country: Australia
 538, United States 462.
 
 Model: the 18-feature Random Forest (SHA-256 `ac1dc5aa…`, trained
-2026-08-31), with the fixed 0.5 threshold. Cutoff: only URLs verified or captured
-after 2026-09-01T00:00:00Z.
+2026-08-31), with the fixed 0.5 threshold. Cutoff: only rows whose source
+timestamp is after 2026-09-01T00:00:00Z.
+
+#### What the dates mean, and what they do not mean
+
+The cutoff is applied to each source's own timestamp. Neither timestamp is the
+date a URL first appeared on the internet.
+
+- **Phishing: `verification_time`.** This is when PhishTank's community confirmed
+  the report as phishing. The URL may have been live, or reported, before then.
+- **Legitimate: crawl capture timestamp.** This is when Common Crawl fetched the
+  page in October 2026. The page may have existed for years before that.
+
+So the test does **not** show that every URL was created after the model was
+trained. Two things are guaranteed instead:
+
+1. **Every timestamp is after the approved cutoff.** The cutoff falls after
+   every dated training-era record, as recorded in `protocol.json`: the latest
+   PhishTank verification time in the training-era snapshot
+   (2026-08-31T02:02:21Z), the Tranco list date (2026-08-30), and the model's
+   training run (2026-08-31T14:53:06Z). The training-era legitimate archive has
+   no dates, which is why overlap with it is checked directly (point 2).
+2. **No test URL appears in the model's development data.** That data is what was
+   used to train, validate, and diagnose the model. "Appears" is checked three
+   ways: by normalized URL, by page pattern, and by registrable domain (see the
+   cleaning table below).
+
+In this guide, "unseen" means exactly this: not present in the development data.
+It does not mean "created after training".
 
 #### How the data was cleaned
 
@@ -229,7 +258,7 @@ Every step is counted in the report. Rows removed:
 | Step | Phishing | Legitimate |
 | --- | --- | --- |
 | Model cannot read the URL (over 2,048 characters or contains spaces; excluded at conversion) | 11 | 0 |
-| Verified on or before the cutoff | 39,560 | 0 |
+| Source timestamp on or before the cutoff | 39,560 | 0 |
 | Exact duplicates after normalization | 48 | 0 |
 | Near-duplicates (same site and page pattern) | 73 | 509 |
 | URL already in the training-era data | 7 | 0 |
@@ -286,8 +315,11 @@ use, can look suspicious to a URL-only model.
 
 The final test is a few points lower on every measure. That is expected and
 is the reason for an untouched test. The validation data came from the same
-sources and period as training, while the final test uses later URLs, a
-different legitimate source, and no website the model had seen. The final
+sources and period as training. The final test instead uses:
+
+- source timestamps after the cutoff;
+- a different legitimate source;
+- no website from the development data. The final
 figures are the ones to report.
 
 By week, phishing recall ranged from 62% to 85% (21 to 251 URLs per week),
@@ -314,7 +346,9 @@ with no steady decline across September to November.
 - **Unsupported URLs.** URLs over 2,048 characters or containing spaces
   (11 in the feed, 2 after the cutoff) cannot be scored and were excluded, so the
   result says nothing about them.
-- **Time.** The result describes September–November 2026. Phishing changes over
+- **Time.** The result describes URLs with source timestamps in
+  September–November 2026. Some may have existed earlier (see "What the dates
+  mean"). Phishing changes over
   time (concept drift), so performance should be re-checked on newer data.
 - **Labels can be wrong.** A compromised official page could be labelled
   legitimate, and in-page redirects cannot be seen in crawl records.

@@ -60,8 +60,9 @@
 **Model evaluation** was completed on 2026-11-26 with a single final untouched
 test:
 
-- **Data:** 1,000 phishing and 1,000 legitimate URLs, all first seen after the
-  model was trained.
+- **Data:** 1,000 phishing and 1,000 legitimate URLs, all with source timestamps
+  after the approved 2026-09-01 cutoff (PhishTank verification time and Common
+  Crawl capture time). None appears in the model's development data.
 - **Results:** 83.35% accuracy, 0.887 ROC-AUC. The model missed 225 phishing URLs
   and wrongly flagged 108 legitimate ones.
 - **Verification:** the report was checked against the approved protocol before
