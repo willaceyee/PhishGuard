@@ -49,7 +49,7 @@ export default function Users({ token, onDataChange }) {
   }
 
   return <section className="workspace-page">
-    <div className="page-heading"><div><p className="eyebrow">People directory</p><h1>Users</h1><p>Add employees who can be assigned to controlled awareness campaigns.</p></div><span className="count-pill">{users.length} users</span></div>
+    <div className="page-heading"><div><h1>Users</h1><p>Add employees who can be assigned to controlled awareness campaigns.</p></div><span className="count-pill">{users.length} {users.length === 1 ? 'user' : 'users'}</span></div>
     {error && <div className="dashboard-error" role="alert">{error}</div>}
     <div className="workspace-grid">
       <form className="form-card" onSubmit={submit}>
@@ -62,7 +62,7 @@ export default function Users({ token, onDataChange }) {
       </form>
       <div className="list-card">
         <h2>Available users</h2>
-        {loading ? <p className="empty-state">Loading users…</p> : users.length === 0 ? <p className="empty-state">No users yet.</p> : <div className="record-list">{users.map((user) => <article className="record" key={user.user_id}><div className="avatar">{user.name.charAt(0).toUpperCase()}</div><div><strong>{user.name}</strong><span>{user.email}</span><small>{user.department || 'No department'} · {user.role}</small><span className={`approval-status ${user.simulation_email_approved ? 'approved' : 'not-approved'}`}>{user.simulation_email_approved ? 'Approved for simulation email' : 'Email approval required'}</span></div><div className="record-actions"><button className="small-button" type="button" disabled={updatingApproval === user.user_id} onClick={() => toggleEmailApproval(user)}>{updatingApproval === user.user_id ? 'Saving…' : user.simulation_email_approved ? 'Revoke email' : 'Approve email'}</button><button className="danger-link" type="button" onClick={() => remove(user)}>Delete</button></div></article>)}</div>}
+        {loading ? <p className="empty-state" role="status">Loading users…</p> : users.length === 0 ? <p className="empty-state">No users yet.</p> : <div className="record-list">{users.map((user) => <article className="record" key={user.user_id}><div className="avatar">{user.name.charAt(0).toUpperCase()}</div><div><strong>{user.name}</strong><span>{user.email}</span><small>{user.department || 'No department'} · {user.role}</small><span className={`approval-status ${user.simulation_email_approved ? 'approved' : 'not-approved'}`}>{user.simulation_email_approved ? 'Approved for simulation email' : 'Email approval required'}</span></div><div className="record-actions"><button className="small-button" type="button" disabled={updatingApproval === user.user_id} onClick={() => toggleEmailApproval(user)}>{updatingApproval === user.user_id ? 'Saving…' : user.simulation_email_approved ? 'Revoke email' : 'Approve email'}</button><button className="danger-link" type="button" onClick={() => remove(user)}>Delete</button></div></article>)}</div>}
       </div>
     </div>
   </section>

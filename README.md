@@ -78,7 +78,7 @@ up and run `flask --app run.py upgrade-db` once, then restart Flask with the con
 `MAIL_DELIVERY_ENABLED=1`, and a publicly reachable HTTPS `PUBLIC_BASE_URL` using
 `flask --app run.py run` so `.env` settings are loaded before app construction.
 On **Users**, create and approve a user matching the Gmail sender. On **Sending
-Profiles**, create the profile using a Google app password, select **Send test**
+profiles**, create the profile using a Google app password, select **Send test**
 (which sends real email to that approved sender only), and **Enable** it. Never
 enter the normal Google password. Choose Gmail explicitly when creating a
 campaign; Mailpit remains the default. Follow the guide's limits, confirmation,

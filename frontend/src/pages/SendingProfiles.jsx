@@ -107,25 +107,29 @@ export default function SendingProfiles({ token }) {
   }
 
   return <section className="workspace-page sending-profile-page">
-    <div className="page-heading"><div><p className="eyebrow">Gmail delivery</p><h2>Sending profile</h2><p>Configure one Gmail account for approved simulation email. Test emails can only be sent to an approved user.</p></div>{profile && <span className="count-pill">{profile.enabled ? 'Enabled' : 'Disabled'}</span>}</div>
+    <div className="page-heading"><div><h1>Sending profiles</h1><p>Configure one Gmail account for approved simulation email. Test emails can only be sent to an approved user.</p></div>{profile && <span className={`status-pill ${profile.enabled ? 'on' : 'off'}`}>{profile.enabled ? 'Enabled' : 'Disabled'}</span>}</div>
     {error && <div className="dashboard-error" role="alert">{error}</div>}
     {recipientError && <div className="dashboard-error" role="alert">{recipientError}</div>}
     {templateError && <div className="dashboard-error" role="alert">{templateError}</div>}
     {notice && <div className="success-note" role="status">{notice}</div>}
-    {loading ? <p className="loading-state">Loading sending profile…</p> : profile !== undefined && <form className="form-card sending-profile-form" onSubmit={(event) => { event.preventDefault(); runAction(profile ? 'save' : 'create') }}>
-      {!profile && <p className="muted">No Gmail profile configured.</p>}
-      <label htmlFor="profile-name">Profile name</label><input id="profile-name" maxLength={160} value={form.name} disabled={!!pending} onChange={(event) => setForm({ ...form, name: event.target.value })} required />
-      <label htmlFor="profile-display-name">Display name</label><input id="profile-display-name" maxLength={120} value={form.from_name} disabled={!!pending} onChange={(event) => setForm({ ...form, from_name: event.target.value })} required />
-      <label htmlFor="profile-email">Gmail address</label><input id="profile-email" type="email" value={form.from_email} disabled={!!pending} onChange={(event) => setForm({ ...form, from_email: event.target.value })} required />
-      {profile && <p className="credential-indicator">App password: {profile.credential_configured ? 'Configured' : 'Not configured'}</p>}
-      {profile && <p className="muted">Last test: {!testStatusAvailable ? 'Unavailable' : lastTestedAt ? profile.last_test_succeeded ? 'Succeeded' : 'Failed' : 'Not tested'}{lastTestedAt && <> · <time dateTime={testTimestamp}>{new Date(testTimestamp).toLocaleString()}</time></>}</p>}
-      <label htmlFor="profile-password">Google app password</label><input id="profile-password" type="password" autoComplete="new-password" value={password} disabled={!!pending} onChange={(event) => setPassword(event.target.value)} required={!profile} />
-      {profile && <small>Enter a new app password only when replacing the stored credential. Save metadata does not replace it.</small>}
-      <div className="form-actions sending-profile-actions">
-        <button className="primary-button" disabled={!!pending}>{profile ? pending === 'save' ? 'Saving…' : 'Save metadata' : pending === 'create' ? 'Creating…' : 'Create profile'}</button>
-        {profile && <button className="secondary-button" type="button" disabled={!!pending || !password.trim()} onClick={() => runAction('replace')}>{pending === 'replace' ? 'Replacing…' : 'Replace password'}</button>}
-      </div>
-      {profile && <div className="sending-profile-actions">
+    {loading ? <p className="loading-state" role="status">Loading sending profile…</p> : profile !== undefined && <div className="sending-profile-layout">
+      <form className="form-card sending-profile-form" onSubmit={(event) => { event.preventDefault(); runAction(profile ? 'save' : 'create') }}>
+        <h2>{profile ? 'Gmail profile' : 'Create a Gmail profile'}</h2>
+        {!profile && <p className="muted">No Gmail profile configured.</p>}
+        <label htmlFor="profile-name">Profile name</label><input id="profile-name" maxLength={160} value={form.name} disabled={!!pending} onChange={(event) => setForm({ ...form, name: event.target.value })} required />
+        <label htmlFor="profile-display-name">Display name</label><input id="profile-display-name" maxLength={120} value={form.from_name} disabled={!!pending} onChange={(event) => setForm({ ...form, from_name: event.target.value })} required />
+        <label htmlFor="profile-email">Gmail address</label><input id="profile-email" type="email" value={form.from_email} disabled={!!pending} onChange={(event) => setForm({ ...form, from_email: event.target.value })} required />
+        {profile && <p className="credential-indicator">App password: {profile.credential_configured ? 'Configured' : 'Not configured'}</p>}
+        <label htmlFor="profile-password">Google app password</label><input id="profile-password" type="password" autoComplete="new-password" value={password} disabled={!!pending} onChange={(event) => setPassword(event.target.value)} required={!profile} />
+        {profile && <small>Enter a new app password only when replacing the stored credential. Save metadata does not replace it.</small>}
+        <div className="form-actions sending-profile-actions">
+          <button className="primary-button" disabled={!!pending}>{profile ? pending === 'save' ? 'Saving…' : 'Save metadata' : pending === 'create' ? 'Creating…' : 'Create profile'}</button>
+          {profile && <button className="secondary-button" type="button" disabled={!!pending || !password.trim()} onClick={() => runAction('replace')}>{pending === 'replace' ? 'Replacing…' : 'Replace password'}</button>}
+        </div>
+      </form>
+      {profile && <section className="form-card profile-tools" aria-labelledby="profile-tools-heading">
+        <h2 id="profile-tools-heading">Test and status</h2>
+        <p className="muted">Last test: {!testStatusAvailable ? 'Unavailable' : lastTestedAt ? profile.last_test_succeeded ? 'Succeeded' : 'Failed' : 'Not tested'}{lastTestedAt && <> · <time dateTime={testTimestamp}>{new Date(testTimestamp).toLocaleString()}</time></>}</p>
         <label htmlFor="test-recipient">Test send to</label>
         <select id="test-recipient" value={testRecipientId} disabled={!!pending || !!recipientError} onChange={(event) => setTestRecipientId(event.target.value)}>
           <option value="">{recipientError ? 'Approved users unavailable' : 'Select an approved user'}</option>
@@ -136,10 +140,12 @@ export default function SendingProfiles({ token }) {
           <option value="">{templateError ? 'Templates unavailable' : 'Select a template'}</option>
           {templates.map((template) => <option key={template.template_id} value={template.template_id}>{template.template_name}</option>)}
         </select>
-        <button className="small-button" type="button" disabled={!!pending || !testRecipientId || !testTemplateId} onClick={() => runAction('test')}>{pending === 'test' ? 'Sending test…' : 'Send test'}</button>
-        <button className="small-button" type="button" disabled={!!pending} onClick={() => runAction('toggle')}>{pending === 'toggle' ? profile.enabled ? 'Disabling…' : 'Enabling…' : profile.enabled ? 'Disable' : 'Enable'}</button>
-        <button className="danger-link" type="button" disabled={!!pending} onClick={() => runAction('delete')}>{pending === 'delete' ? 'Deleting…' : 'Delete'}</button>
-      </div>}
-    </form>}
+        <div className="tool-row">
+          <button className="small-button" type="button" disabled={!!pending || !testRecipientId || !testTemplateId} onClick={() => runAction('test')}>{pending === 'test' ? 'Sending test…' : 'Send test'}</button>
+          <button className="small-button" type="button" disabled={!!pending} onClick={() => runAction('toggle')}>{pending === 'toggle' ? profile.enabled ? 'Disabling…' : 'Enabling…' : profile.enabled ? 'Disable' : 'Enable'}</button>
+          <button className="danger-link" type="button" disabled={!!pending} onClick={() => runAction('delete')}>{pending === 'delete' ? 'Deleting…' : 'Delete'}</button>
+        </div>
+      </section>}
+    </div>}
   </section>
 }

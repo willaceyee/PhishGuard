@@ -355,11 +355,11 @@ describe('Sending Profiles workspace', () => {
     expect(screen.queryByRole('button', { name: 'Create profile' })).not.toBeInTheDocument()
   })
 
-  it('opens Sending Profiles from dashboard navigation', async () => {
+  it('opens sending profiles from dashboard navigation', async () => {
     render(<Dashboard token="admin-token" />)
-    fireEvent.click(screen.getByRole('button', { name: 'Sending Profiles' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Sending profiles' }))
     await screen.findByDisplayValue('Awareness Gmail')
-    expect(screen.getByRole('heading', { level: 1, name: 'Sending Profiles' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 1, name: 'Sending profiles' })).toBeInTheDocument()
   })
 })
 

@@ -159,7 +159,7 @@ manually retrying the remaining recipients. No automatic retry occurs.
 ## Stop delivery and recover credentials
 
 - Revoke a recipient's approval on **Users** to block future delivery to them.
-- Select **Disable** on **Sending Profiles** to block Gmail campaigns immediately.
+- Select **Disable** on **Sending profiles** to block Gmail campaigns immediately.
   A change requested during message construction or SMTP dispatch waits for that
   in-flight message to finish. Queued changes apply before another message starts.
   During an active batch, committed disable or approval changes stop messages

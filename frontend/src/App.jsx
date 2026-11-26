@@ -10,6 +10,7 @@ function App() {
     return stored ? JSON.parse(stored) : null
   })
   const [dashboard, setDashboard] = useState(null)
+  const [loadedAt, setLoadedAt] = useState(null)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(Boolean(token))
 
@@ -27,6 +28,8 @@ function App() {
     setError('')
     try {
       setDashboard(await getDashboardOverview(activeToken))
+      setLoadedAt(new Date())
+      setLoadedAt(new Date())
     } catch (requestError) {
       if (requestError.status === 401) handleLogout()
       else setError(requestError.message)
@@ -40,7 +43,7 @@ function App() {
     let cancelled = false
     getDashboardOverview(token)
       .then((result) => {
-        if (!cancelled) setDashboard(result)
+        if (!cancelled) { setDashboard(result); setLoadedAt(new Date()) }
       })
       .catch((requestError) => {
         if (cancelled) return
@@ -74,6 +77,7 @@ function App() {
       data={dashboard}
       error={error}
       loading={loading}
+      loadedAt={loadedAt}
       onLogout={handleLogout}
       onRefresh={() => loadDashboard()}
       token={token}

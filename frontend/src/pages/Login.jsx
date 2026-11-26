@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import ShieldMark from '../components/ShieldMark.jsx'
 import { login } from '../services/api.js'
 
 export default function Login({ onLogin }) {
@@ -22,16 +23,10 @@ export default function Login({ onLogin }) {
 
   return (
     <main className="login-shell">
-      <section className="login-intro">
-        <p className="eyebrow">Cybersecurity awareness platform</p>
-        <h1>See risk.<br />Build resilience.</h1>
-        <p>Turn controlled phishing exercises into clear, measurable learning outcomes.</p>
-      </section>
-      <section className="login-panel">
-        <div className="brand-mark" aria-hidden="true">P</div>
-        <p className="eyebrow">Administrator access</p>
-        <h2>Welcome to PhishGuard</h2>
-        <p className="muted">Sign in to review campaign performance and user awareness.</p>
+      <section className="login-panel" aria-labelledby="login-title">
+        <div className="login-brand"><ShieldMark size={30} /><span>PhishGuard</span></div>
+        <h1 id="login-title">Administrator sign in</h1>
+        <p className="muted">Review campaign outcomes, coaching priorities, and URL detection.</p>
         <form onSubmit={handleSubmit}>
           <label htmlFor="email">Email address</label>
           <input id="email" type="email" value={email} onChange={(event) => setEmail(event.target.value)} autoComplete="username" required />
@@ -40,6 +35,14 @@ export default function Login({ onLogin }) {
           {error && <p className="form-error" role="alert">{error}</p>}
           <button className="primary-button" type="submit" disabled={loading}>{loading ? 'Signing in…' : 'Sign in'}</button>
         </form>
+        <p className="login-note">Authorized awareness simulations only.</p>
+      </section>
+      <section className="login-visual" aria-hidden="true">
+        <div className="login-visual-inner">
+          {/* Reserved slot: the future 3D shield replaces the flat mark at this size. */}
+          <div className="hero-shield-slot"><ShieldMark size={150} /></div>
+          <p>Phishing simulation, awareness training, and URL detection in one workspace.</p>
+        </div>
       </section>
     </main>
   )
