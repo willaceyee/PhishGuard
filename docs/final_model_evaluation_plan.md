@@ -93,6 +93,28 @@ allowed and ignored):
 
 In final mode, any malformed row stops the run (fix the file and validate again).
 
+**Unsupported-input exclusion (approved 2026-11-26).** Both converters exclude any
+row whose URL the model's own parser rejects (`normalize_url` in
+`backend/app/ml/features.py`): URLs longer than 2,048 characters and URLs
+containing whitespace. The model cannot score these in the app or anywhere else,
+so they are outside its supported input. The rule applies to both classes.
+
+- URLs are never repaired, shortened, or re-encoded.
+- Excluded rows are counted by reason, with their timestamps but not their URLs,
+  under `unsupported_input` in the converter summary.
+- The final report states this as a limitation: the result says nothing about very
+  long or whitespace-containing URLs.
+- The strict malformed-row check above stays in place as a safety net.
+
+In the PhishTank snapshot of 2026-11-22, 11 rows were excluded:
+
+| Reason | After the cutoff | At or before the cutoff |
+| --- | --- | --- |
+| Longer than 2,048 characters | 1 | 4 |
+| Contains whitespace | 1 | 5 |
+
+Only the 2 rows after the cutoff could have entered the test.
+
 ## 4. Cleaning rules (applied in this order, every removal counted by class and source)
 
 1. **Validation and cutoff.** Malformed rows are reported by line number, without
@@ -483,6 +505,34 @@ only `index.commoncrawl.org`, pauses between requests, and can be re-run to resu
 ```powershell
 & $py ..\ml_model\final_evaluation\fetch_cc_index.py
 ```
+
+**Query correction (2026-11-26).** The first download used the filter
+`~mime-detected:html`. On the index server this matched nothing: for
+`tcc.sa.edu.au` it returned 0 rows, while the same query without it returned 80
+captures, 73 of them `text/html`. Twelve domains were recorded as "0 captures"
+before this was noticed. The run was stopped, and its folder was moved, unchanged,
+to `ml_model\data\final\raw\cc-index.bad-mime-filter-2026-11-26\` (Git-ignored). It
+is outside `cc-index\`, so step 4 never reads it. The filter is now the exact
+match `=mime-detected:text/html`. The converter already keeps only types starting
+with `text/html`, so the labelling rule is unchanged; only the download filter was
+broken. No test URLs had been converted, validated, or predicted at that point.
+
+Safeguards added to `fetch_cc_index.py`:
+
+- Every domain entry in `download_record.json` stores the filters it was fetched
+  with.
+- On resume, a domain is skipped only if that stamp equals the current filters and
+  its file still matches the recorded SHA-256. Older entries are fetched again.
+- A log made with different filters is refused as a whole.
+- Outcomes are explicit:
+  - `captured`;
+  - `no_matching_captures`, where the server answered but had no HTTP 200 HTML
+    captures;
+  - a failed request, which is listed under `failures`, writes no file, and is
+    retried on the next run (the script exits non-zero while any remain).
+- Returned rows are re-checked against the filters.
+
+The tests are in `backend/tests/test_fetch_cc_index.py`.
 
 **Step 3: record provenance** in `ml_model\final_evaluation\test_sources.json`:
 both download times, the PhishTank file and `download_record.json` with their

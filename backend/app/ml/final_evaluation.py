@@ -33,6 +33,7 @@ from publicsuffixlist import PublicSuffixList
 
 from app.ml.evaluate import classification_metrics, sha256
 from app.ml.features import MODEL_FEATURE_NAMES, extract_url_features
+from app.ml.features import normalize_url as model_input_check
 from app.ml.prepare_demo_data import generate_demo_rows
 from app.ml.retrain_raw import load_phishtank_splits, usable_url
 from app.ml.service import load_bundle
@@ -974,13 +975,37 @@ def _write_rows(path, rows, extra=()):
         writer.writerows(rows)
 
 
+def unsupported_input_reason(url):
+    """Reason the model's own URL parser rejects this URL, or None if it is supported.
+
+    Unsupported-input exclusion (approved 2026-11-26): rows the model cannot score
+    (app.ml.features.normalize_url refuses them, for example URLs over 2,048
+    characters or containing whitespace) are excluded at conversion, counted by
+    class, reason and timestamp, and never repaired.
+    """
+    try:
+        model_input_check(url)
+    except ValueError as error:
+        return str(error)
+    return None
+
+
+def _unsupported_summary(excluded):
+    return {
+        "rule": "unsupported-input exclusion: rows rejected by app.ml.features.normalize_url",
+        "by_reason": dict(Counter(reason for reason, _ in excluded)),
+        "observed_at": sorted(observed for _, observed in excluded),
+    }
+
+
 def convert_phishtank(input_csv, output_csv):
     """Convert PhishTank's online-valid CSV to the final-test format.
 
     observed_at is PhishTank's per-row verification_time. Rows not marked
-    verified=yes and online=yes are dropped and counted.
+    verified=yes and online=yes are dropped and counted, and so are rows the model
+    cannot accept as input (see unsupported_input_reason).
     """
-    rows, skipped = [], Counter()
+    rows, skipped, unsupported = [], Counter(), []
     with Path(input_csv).open(newline="", encoding="utf-8-sig") as handle:
         reader = csv.DictReader(handle)
         if not PHISHTANK_COLUMNS.issubset(reader.fieldnames or ()):
@@ -994,12 +1019,20 @@ def convert_phishtank(input_csv, output_csv):
             except ValueError:
                 skipped["invalid_verification_time"] += 1
                 continue
+            reason = unsupported_input_reason((record.get("url") or "").strip())
+            if reason:
+                skipped["unsupported_input"] += 1
+                unsupported.append((reason, observed_at))
+                continue
             rows.append({
                 "url": (record.get("url") or "").strip(), "label": "phishing", "source": PHISHTANK_SOURCE,
                 "observed_at": observed_at, "phish_id": record.get("phish_id", ""),
             })
     _write_rows(output_csv, rows, extra=("phish_id",))
-    return {"input_sha256": sha256(input_csv), "output_sha256": sha256(output_csv), "rows": len(rows), "skipped": dict(skipped)}
+    return {
+        "input_sha256": sha256(input_csv), "output_sha256": sha256(output_csv), "rows": len(rows),
+        "skipped": dict(skipped), "unsupported_input": _unsupported_summary(unsupported),
+    }
 
 
 def read_official_domains(path):
@@ -1037,7 +1070,7 @@ def convert_common_crawl(index_files, official_domains_csv, output_csv, max_per_
                     contested.add(url_keys(url, require_scheme=False).domain)
                 except ValueError:
                     continue
-    skipped = Counter()
+    skipped, unsupported = Counter(), []
     candidates = {}
     for index_file in index_files:
         with Path(index_file).open(encoding="utf-8") as handle:
@@ -1046,6 +1079,11 @@ def convert_common_crawl(index_files, official_domains_csv, output_csv, max_per_
                     continue
                 try:
                     record = json.loads(line)
+                    reason = unsupported_input_reason(str(record["url"]).strip())
+                    if reason:
+                        skipped["unsupported_input"] += 1
+                        unsupported.append((reason, str(record.get("timestamp", ""))))
+                        continue
                     keys = url_keys(record["url"])
                     parts = urlsplit(record["url"].strip())
                     observed = datetime.strptime(record["timestamp"], "%Y%m%d%H%M%S").replace(tzinfo=timezone.utc)
@@ -1087,6 +1125,7 @@ def convert_common_crawl(index_files, official_domains_csv, output_csv, max_per_
         "max_per_domain": max_per_domain,
         "seed": seed,
         "skipped": dict(skipped),
+        "unsupported_input": _unsupported_summary(unsupported),
     }
 
 
