@@ -1,3 +1,11 @@
+"""Model evaluation.
+
+``python -m app.ml.evaluate`` runs the historical baseline workflow (result B in
+docs/phase5_ml_detection.md) and is kept unchanged for reproducibility. The final
+untouched evaluation has its own command, ``python -m app.ml.final_evaluation``,
+which reuses :func:`classification_metrics` below.
+"""
+
 import argparse
 import csv
 import hashlib
@@ -13,6 +21,7 @@ from sklearn.metrics import (
     average_precision_score,
     classification_report,
     confusion_matrix,
+    precision_recall_fscore_support,
     roc_auc_score,
 )
 
@@ -27,6 +36,54 @@ DEFAULT_OUTPUT = PROJECT_ROOT / "ml_model" / "artifacts" / "unseen_evaluation.js
 
 def sha256(path):
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+
+
+CLASS_NAMES = ("legitimate", "phishing")
+
+
+def classification_metrics(labels, probabilities, threshold):
+    """Score binary predictions with phishing (1) as the positive class.
+
+    The confusion matrix is ordered [[TN, FP], [FN, TP]]. PR-AUC is scikit-learn's
+    average precision: sum over descending score thresholds of
+    (R_n - R_{n-1}) * P_n, a step-wise area with no interpolation.
+    """
+    labels = np.asarray(labels, dtype=int)
+    probabilities = np.asarray(probabilities, dtype=float)
+    predictions = (probabilities >= threshold).astype(int)
+    matrix = confusion_matrix(labels, predictions, labels=[0, 1])
+    tn, fp, fn, tp = (int(value) for value in matrix.ravel())
+    precision, recall, f1, support = precision_recall_fscore_support(
+        labels, predictions, labels=[0, 1], zero_division=0
+    )
+    both_classes = len(set(labels.tolist())) == 2
+    return {
+        "rows": int(len(labels)),
+        "threshold": threshold,
+        "confusion_matrix": [[tn, fp], [fn, tp]],
+        "confusion_matrix_order": "[[TN, FP], [FN, TP]] with phishing as the positive class",
+        "true_negatives": tn,
+        "false_positives": fp,
+        "false_negatives": fn,
+        "true_positives": tp,
+        "accuracy": round(float(accuracy_score(labels, predictions)), 6),
+        "per_class": {
+            name: {
+                "precision": round(float(precision[index]), 6),
+                "recall": round(float(recall[index]), 6),
+                "f1": round(float(f1[index]), 6),
+                "support": int(support[index]),
+            }
+            for index, name in enumerate(CLASS_NAMES)
+        },
+        "roc_auc": round(float(roc_auc_score(labels, probabilities)), 6) if both_classes else None,
+        "pr_auc": round(float(average_precision_score(labels, probabilities)), 6) if both_classes else None,
+        "pr_auc_method": (
+            "Average precision with phishing as the positive class: sum over descending "
+            "score thresholds of (R_n - R_{n-1}) * P_n (sklearn.metrics.average_precision_score); "
+            "step-wise, not trapezoidal."
+        ),
+    }
 
 
 def valid_feature_row(url, feature_names=MODEL_FEATURE_NAMES):

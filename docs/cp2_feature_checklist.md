@@ -51,7 +51,24 @@
 - [x] Unit testing
 - [x] Integration testing
 - [ ] Usability testing
-- [ ] Model evaluation
+- [x] Model evaluation
 - [x] Final report screenshots
 
-Usability testing requires real participants. Final model evaluation requires a representative real-world dataset; synthetic pipeline metrics are not accepted as final evidence. The existing external-data results, including the raw-URL diagnostic period, are not a final untouched test. See [`final_model_evaluation_plan.md`](final_model_evaluation_plan.md).
+**Usability testing** is still pending because it requires real participants. See
+[`usability_testing_guide.md`](usability_testing_guide.md).
+
+**Model evaluation** was completed on 2026-11-26 with a single final untouched
+test:
+
+- **Data:** 1,000 phishing and 1,000 legitimate URLs, all with source timestamps
+  after the approved 2026-09-01 cutoff (PhishTank verification time and Common
+  Crawl capture time). None appears in the model's development data.
+- **Results:** 83.35% accuracy, 0.887 ROC-AUC. The model missed 225 phishing URLs
+  and wrongly flagged 108 legitimate ones.
+- **Verification:** the report was checked against the approved protocol before
+  this item was ticked.
+- **Details:** [`phase5_ml_detection.md`, result D](phase5_ml_detection.md#d-final_untouched_evaluationjson-the-final-untouched-test)
+  and [`final_model_evaluation_plan.md`](final_model_evaluation_plan.md).
+
+Synthetic pipeline metrics and the earlier development results are not final
+evidence.

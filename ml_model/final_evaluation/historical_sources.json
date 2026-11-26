@@ -1,0 +1,78 @@
+{
+  "format": "phishguard-historical-sources/1",
+  "description": "Every earlier data source whose URLs or registrable domains must be excluded from the final test. Final mode refuses to run unless every source is verified or carries a recorded out-of-scope decision. Raw files stay outside version control (ml_model/data/external/ is ignored by Git).",
+  "sources": [
+    {
+      "name": "phishtank_snapshot_2026_08",
+      "used_by": [
+        "baseline_external_evaluation.json (phishing)",
+        "raw_training_metrics.json training, validation, and diagnostic phishing"
+      ],
+      "format": "phishtank_csv",
+      "coverage": "all rows in the file, regardless of verified/online values",
+      "path": "ml_model/data/external/phishtank_snapshot_2026_08.csv",
+      "sha256": "a55aa3b2b1314ae3d7715ee6d56527366afe7bc616fe45f0b87fcd4a57b52240",
+      "exclusion_list": {
+        "path": "ml_model/data/external/exclusions/phishtank_snapshot_2026_08.json",
+        "sha256": "record after running build-exclusions"
+      }
+    },
+    {
+      "name": "legitimate_status_archive",
+      "used_by": [
+        "baseline_external_evaluation.json (legitimate)",
+        "raw_training_metrics.json status-1 legitimate rows"
+      ],
+      "format": "url_csv_zip",
+      "coverage": "all rows in the archive's single CSV, regardless of status",
+      "path": "ml_model/data/external/legitimate_status_archive.zip",
+      "sha256": "3b888fbf950e34cc04716c9f57da139c586bdc4e1f95c2940f6ad471456390ce",
+      "exclusion_list": {
+        "path": "ml_model/data/external/exclusions/legitimate_status_archive.json",
+        "sha256": "record after running build-exclusions"
+      }
+    },
+    {
+      "name": "tranco_5674N_homepages",
+      "used_by": [
+        "raw_training_metrics.json Tranco homepages (training, validation, diagnostic)"
+      ],
+      "format": "tranco_used_homepages",
+      "coverage": "exactly the homepage URLs app.ml.retrain_raw drew from the list, reproduced from the PhishTank split sizes",
+      "path": "ml_model/data/external/tranco_5674N.zip",
+      "sha256": "6ef97b3268dacf46ff4ac1ac70cfba18fb413c2d5eb39d83a1e1d12405ca24e4",
+      "phishing_source": "phishtank_snapshot_2026_08",
+      "train_end": "2026-08-01T00:00:00Z",
+      "diagnostic_start": "2026-08-22T00:00:00Z",
+      "expected_phishing_rows": {
+        "train": 68275,
+        "validation": 4569,
+        "diagnostic": 1086
+      },
+      "expected_homepages": {
+        "train": 34138,
+        "validation": 2285,
+        "diagnostic": 543
+      }
+    },
+    {
+      "name": "precomputed_feature_dataset",
+      "used_by": [
+        "metrics.json (earlier 15-feature model, training and random-split test)"
+      ],
+      "format": "out_of_scope",
+      "path": "ml_model/data/external/Phishing_Legitimate_full.csv",
+      "sha256": "204c226d6b6126a40423084ce9d1391a162d0545f451b858464c1b9b742a8900",
+      "decision": "Outside the scope of this evaluation of the current 18-feature model: see protocol.json evaluation_scope.excluded_historical_sources. Approved with the protocol on 2026-11-22."
+    },
+    {
+      "name": "synthetic_demo_fixture",
+      "used_by": [
+        "ml_model/data/demo_urls.csv and automated tests"
+      ],
+      "format": "synthetic_demo_generator",
+      "samples_per_class": 300,
+      "seed": 42
+    }
+  ]
+}

@@ -1,0 +1,201 @@
+{
+  "format": "phishguard-historical-reconstruction-evidence/1",
+  "generated_at": "2026-11-22T18:14:03+08:00",
+  "model_sha256": "ac1dc5aac4d97333faea4bcf49a8323b55c49d9d7994db1a42f17c9f5cef9edc",
+  "recorded_metrics_file": "ml_model/artifacts/raw_training_metrics.json",
+  "method": "Rebuilt the training, validation, and diagnostic URL sets with app.ml.retrain_raw (same seed and dates as the recorded run), scored the frozen model on validation and diagnostic, and compared every recorded value.",
+  "all_match": true,
+  "comparisons": [
+    {
+      "item": "source_sha256.phishtank",
+      "recorded": "a55aa3b2b1314ae3d7715ee6d56527366afe7bc616fe45f0b87fcd4a57b52240",
+      "match": true
+    },
+    {
+      "item": "source_sha256.legitimate_dataset_zip",
+      "recorded": "3b888fbf950e34cc04716c9f57da139c586bdc4e1f95c2940f6ad471456390ce",
+      "match": true
+    },
+    {
+      "item": "source_sha256.tranco_zip",
+      "recorded": "6ef97b3268dacf46ff4ac1ac70cfba18fb413c2d5eb39d83a1e1d12405ca24e4",
+      "match": true
+    },
+    {
+      "item": "rejected_rows",
+      "recorded": {
+        "phishtank": 12,
+        "legitimate_dataset": 235
+      },
+      "match": true
+    },
+    {
+      "item": "training_rows",
+      "recorded": 136550,
+      "match": true
+    },
+    {
+      "item": "training_phishing_rows",
+      "recorded": 68275,
+      "match": true
+    },
+    {
+      "item": "training_legitimate_sources",
+      "recorded": {
+        "status_1_dataset": 34137,
+        "tranco_https": 34138
+      },
+      "match": true
+    },
+    {
+      "item": "validation.rows",
+      "recorded": 9138,
+      "match": true
+    },
+    {
+      "item": "validation.legitimate_rows",
+      "recorded": 4569,
+      "match": true
+    },
+    {
+      "item": "validation.phishing_rows",
+      "recorded": 4569,
+      "match": true
+    },
+    {
+      "item": "validation.confusion_matrix",
+      "recorded": [
+        [
+          4302,
+          267
+        ],
+        [
+          837,
+          3732
+        ]
+      ],
+      "match": true
+    },
+    {
+      "item": "validation.accuracy",
+      "recorded": 0.879186,
+      "match": true
+    },
+    {
+      "item": "validation.roc_auc",
+      "recorded": 0.955051,
+      "match": true
+    },
+    {
+      "item": "validation.pr_auc",
+      "recorded": 0.959678,
+      "match": true
+    },
+    {
+      "item": "validation.classification_report",
+      "recorded": {
+        "0": {
+          "precision": 0.8371278458844134,
+          "recall": 0.9415627051871307,
+          "f1-score": 0.8862793572311496,
+          "support": 4569.0
+        },
+        "1": {
+          "precision": 0.9332333083270817,
+          "recall": 0.8168089297439265,
+          "f1-score": 0.8711484593837535,
+          "support": 4569.0
+        },
+        "accuracy": 0.8791858174655286,
+        "macro avg": {
+          "precision": 0.8851805771057475,
+          "recall": 0.8791858174655286,
+          "f1-score": 0.8787139083074516,
+          "support": 9138.0
+        },
+        "weighted avg": {
+          "precision": 0.8851805771057475,
+          "recall": 0.8791858174655286,
+          "f1-score": 0.8787139083074516,
+          "support": 9138.0
+        }
+      },
+      "match": true
+    },
+    {
+      "item": "diagnostic.rows",
+      "recorded": 2172,
+      "match": true
+    },
+    {
+      "item": "diagnostic.legitimate_rows",
+      "recorded": 1086,
+      "match": true
+    },
+    {
+      "item": "diagnostic.phishing_rows",
+      "recorded": 1086,
+      "match": true
+    },
+    {
+      "item": "diagnostic.confusion_matrix",
+      "recorded": [
+        [
+          1028,
+          58
+        ],
+        [
+          226,
+          860
+        ]
+      ],
+      "match": true
+    },
+    {
+      "item": "diagnostic.accuracy",
+      "recorded": 0.869245,
+      "match": true
+    },
+    {
+      "item": "diagnostic.roc_auc",
+      "recorded": 0.952746,
+      "match": true
+    },
+    {
+      "item": "diagnostic.pr_auc",
+      "recorded": 0.957893,
+      "match": true
+    },
+    {
+      "item": "diagnostic.classification_report",
+      "recorded": {
+        "0": {
+          "precision": 0.8197767145135566,
+          "recall": 0.9465930018416207,
+          "f1-score": 0.8786324786324786,
+          "support": 1086.0
+        },
+        "1": {
+          "precision": 0.9368191721132898,
+          "recall": 0.7918968692449355,
+          "f1-score": 0.8582834331337326,
+          "support": 1086.0
+        },
+        "accuracy": 0.8692449355432781,
+        "macro avg": {
+          "precision": 0.8782979433134233,
+          "recall": 0.8692449355432781,
+          "f1-score": 0.8684579558831056,
+          "support": 2172.0
+        },
+        "weighted avg": {
+          "precision": 0.8782979433134233,
+          "recall": 0.8692449355432781,
+          "f1-score": 0.8684579558831057,
+          "support": 2172.0
+        }
+      },
+      "match": true
+    }
+  ]
+}
