@@ -4,7 +4,7 @@ PhishGuard is a phishing simulation and detection platform for organizational cy
 
 ## Current status
 
-The project includes a Flask API, a React/Vite frontend, PostgreSQL-ready data models, JWT-protected administration APIs, a controlled phishing-awareness simulation flow, an offline Random Forest URL detector with SHAP explanations, and an analytics dashboard. Usability testing with real participants and the final untouched model evaluation are still pending. See [the final model-evaluation plan](docs/final_model_evaluation_plan.md).
+The project includes a Flask API, a React/Vite frontend, PostgreSQL-ready data models, JWT-protected administration APIs, a controlled phishing-awareness simulation flow, an offline Random Forest URL detector with SHAP explanations, and an analytics dashboard. The final untouched model evaluation is complete: 83.35% accuracy and 0.887 ROC-AUC on 2,000 unseen URLs. See [the Phase 5 guide, result D](docs/phase5_ml_detection.md#d-final_untouched_evaluationjson-the-final-untouched-test) for the results and their limits. Usability testing with real participants is still pending.
 
 ## Main modules
 

@@ -2,6 +2,13 @@
 
 Phase 7 separates evidence that can be generated automatically from evaluation that requires genuine participants or representative external data.
 
+| Item | Status |
+| --- | --- |
+| Unit and integration testing | Complete |
+| Final report screenshots | Complete |
+| Model evaluation | **Complete**: final untouched test run on 2026-11-26 (see below) |
+| Usability testing | **Pending**: requires real participants |
+
 ## Automated verification completed
 
 The backend suite covers unit, integration, security, machine-learning, simulation, training, and analytics behavior.
@@ -12,7 +19,7 @@ Run from `backend`:
 .\venv\Scripts\python.exe -m pytest -q
 ```
 
-The suite enforces at least 85% statement coverage and writes `coverage.xml`. Current local verification contains 316 passing tests with 91.06% coverage.
+The suite enforces at least 85% statement coverage and writes `coverage.xml`. Local verification on 2026-11-26 contains 362 passing tests with 93.18% coverage. The earlier screenshot evidence in [`evidence/test_summary.md`](evidence/test_summary.md) records 316 tests on 2026-11-10.
 
 The frontend quality checks are:
 
@@ -81,12 +88,73 @@ conditions are defined in the usability testing guide.
 
 Store results in an anonymized table and report both successful and unsuccessful outcomes.
 
-## Real-world model-evaluation protocol — dataset work pending
+## Real-world model evaluation — complete
 
-The synthetic development dataset verifies the pipeline only. Do not report its perfect score as final model performance.
+The final untouched evaluation ran once on 2026-11-26. Its report is
+[`final_untouched_evaluation.json`](../ml_model/artifacts/final_untouched_evaluation.json),
+and the full explanation is
+[result D in `phase5_ml_detection.md`](phase5_ml_detection.md#d-final_untouched_evaluationjson-the-final-untouched-test).
 
-External-data results already exist, but none is a final untouched evaluation.
-The details are in [`phase5_ml_detection.md`](phase5_ml_detection.md):
+**Test set:** 2,000 URLs that the model had never seen, all from after its
+training data:
+
+- **1,000 phishing URLs:** PhishTank, verified 1 Sep – 22 Nov 2026, from 951
+  websites.
+- **1,000 legitimate URLs:** Common Crawl pages captured 5–18 Oct 2026 on 76
+  ownership-checked official websites in Australia and the US.
+
+Websites and page patterns seen during training were removed.
+
+| | Predicted legitimate | Predicted phishing |
+| --- | --- | --- |
+| **Actually legitimate** | 892 | 108 (false alarms) |
+| **Actually phishing** | 225 (missed) | 775 |
+
+| Accuracy | Phishing precision / recall / F1 | Legitimate precision / recall / F1 | ROC-AUC | PR-AUC |
+| --- | --- | --- | --- | --- |
+| 83.35% | 0.878 / 0.775 / 0.823 | 0.799 / 0.892 / 0.843 | 0.887 | 0.911 |
+
+In plain terms:
+
+- **The model caught 775 of 1,000 phishing links, and missed 225.** Those 225
+  would have been called safe, which is the more serious error. This is why the
+  detector is decision support, not a guarantee.
+- **It wrongly warned about 108 of 1,000 genuine pages.** These are false alarms:
+  less dangerous than misses, but they can make users ignore warnings.
+- **The scores are a few points below the August validation figures** (87.92%
+  accuracy, 0.955 ROC-AUC). That is expected for later, unseen data, and the
+  final figures are the ones to report.
+
+**Threshold rationale.** The threshold stayed at 0.5, as fixed in the approved
+protocol before the data was opened. It was not tuned on the test set. A lower
+threshold would catch more phishing at the cost of more false alarms. Choosing
+one would need new data, because this test set cannot be reused for tuning.
+
+**Limits on how broadly the result applies:**
+
+- The test is **balanced (50% phishing)**. Real traffic has far less phishing, so
+  real-world precision would be lower than 87.8%. Recall does not depend on the
+  mix.
+- The legitimate sample comes from **76 official websites** (finance, education,
+  health, non-profit, government, utilities) with at most 20 pages each. It does
+  not represent everyday browsing, and government and utility sites are
+  under-represented.
+- There is **one phishing feed** (verified, still-online PhishTank reports), and
+  the model reads **URL text only**.
+- **Unsupported URLs were excluded:** 11 were over 2,048 characters or contained
+  spaces (2 after the cutoff).
+- The results describe **September–November 2026**. Phishing changes over time.
+
+The report was verified against the approved `protocol.json` before this item was
+marked complete (25 of 25 checks; see Phase 5, result D). Only aggregate results
+are published; the test URL lists are not.
+
+### Earlier development results (not final evidence)
+
+The synthetic development dataset verifies the pipeline only. Do not report its
+perfect score as final model performance. The external-data results below came
+before the final test. The details are in
+[`phase5_ml_detection.md`](phase5_ml_detection.md):
 
 - `metrics.json`: earlier 15-feature model, random split of a 10,000-row external
   feature dataset, 89.24% accuracy. It does not show temporal generalization.
@@ -98,11 +166,11 @@ The details are in [`phase5_ml_detection.md`](phase5_ml_detection.md):
   period scored 86.92% accuracy and 0.9527 ROC-AUC. It has already informed model
   assessment and cannot be reused as the final untouched test.
 
-The concrete procedure for the final test is in
-[`final_model_evaluation_plan.md`](final_model_evaluation_plan.md). The general
-requirements are below.
+The procedure followed for the final test is in
+[`final_model_evaluation_plan.md`](final_model_evaluation_plan.md). It met the
+general requirements below.
 
-Before final evaluation:
+Requirements for the final evaluation:
 
 1. Select an ethically sourced and licensed dataset with collection dates and label definitions.
 2. Remove exact and normalized URL duplicates before splitting.
@@ -138,12 +206,13 @@ Completed screenshot evidence is indexed in
 The automated coverage summary is recorded in
 [`evidence/test_summary.md`](evidence/test_summary.md).
 
-Evidence that still requires representative external data or genuine participants:
+The real-world confusion matrix and metric table from the final untouched
+evaluation are recorded above and in
+[`final_untouched_evaluation.json`](../ml_model/artifacts/final_untouched_evaluation.json).
+
+Evidence that still requires genuine participants:
 
 - anonymized usability results from participant testing
-- a real-world confusion matrix and metric table from an untouched evaluation
-  dataset collected after the final cutoff (the existing diagnostic period does
-  not qualify)
 
 Screenshots should show no passwords, tokens, personal email addresses, or real tracking URLs.
 
